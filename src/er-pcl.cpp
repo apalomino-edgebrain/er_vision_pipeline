@@ -170,7 +170,7 @@ int main(int argc, char * argv[]) try
 	}
 
     // Create a simple OpenGL window for rendering:
-    window app(1280, 720, "RealSense PCL Pointcloud Example");
+    window app(1280, 720, "Earth Rover PCL Pipeline");
     // Construct an object to manage view state
     state app_state;
     // register callbacks to allow manipulation of the pointcloud
@@ -268,8 +268,16 @@ int main(int argc, char * argv[]) try
 						if (tex_coords[i].u < 0 || tex_coords[i].u > 1 || tex_coords[i].v < 0 || tex_coords[i].v > 1) {
 						} else {
 
-							//float nvdi =
 							get_texcolor(&color, tex_coords[i].u, tex_coords[i].v, p.r, p.g, p.b);
+
+							float nvdi = float(p.a - p.r) / (p.a + p.r);
+							if (nvdi < - 0.25) {
+								p.r = 0;
+								p.g = 0;
+								p.b = 0;
+								//printf(" NVDI %2.2f \n ", nvdi);
+							}
+
 						}
 						i++;
 						ptr++;
@@ -281,7 +289,7 @@ int main(int argc, char * argv[]) try
 				pcl::PassThrough<pcl::PointXYZRGBA> pass;
 				pass.setInputCloud(cloud);
 				pass.setFilterFieldName("z");
-				pass.setFilterLimits(0.0, 3.0);
+				pass.setFilterLimits(0.0, 5.0);
 				pass.filter(*cloud_filtered);
 				layers.push_back(cloud_filtered);
 
