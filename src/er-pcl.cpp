@@ -2,7 +2,13 @@
 // Copyright(c) 2015-2017 Intel Corporation. All Rights Reserved.
 
 #include <librealsense2/rs.hpp> // Include RealSense Cross Platform API
-#include "../../../examples/example.hpp" // Include short list of convenience functions for rendering
+
+#define GLFW_INCLUDE_GLU
+#include <GLFW/glfw3.h>
+#include <imgui.h>
+#include "imgui_impl_glfw.h"
+
+#include "window_control.h"
 
 #include <pcl/point_types.h>
 #include <pcl/filters/passthrough.h>
@@ -16,9 +22,224 @@ struct state {
 
 using pcl_ptr = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr;
 
-// Helper functions
-void register_glfw_callbacks(window& app, state& app_state);
+class window
+{
+public:
+	std::function<void(bool)>           on_left_mouse = [] (bool) {};
+	std::function<void(double, double)> on_mouse_scroll = [] (double, double) {};
+	std::function<void(double, double)> on_mouse_move = [] (double, double) {};
+	std::function<void(int)>            on_key_release = [] (int) {};
+
+	window(int width, int height, const char* title)
+		: _width(width), _height(height)
+	{
+		glfwInit();
+		win = glfwCreateWindow(width, height, title, nullptr, nullptr);
+		if (!win)
+			throw std::runtime_error("Could not open OpenGL window, please check your graphic drivers or use the textual SDK tools");
+		glfwMakeContextCurrent(win);
+
+		glfwSetWindowUserPointer(win, this);
+		glfwSetMouseButtonCallback(win, [] (GLFWwindow * win, int button, int action, int mods) {
+			ImGuiIO& io = ImGui::GetIO();
+			if (io.WantCaptureMouse)
+				return;
+
+			auto s = (window*) glfwGetWindowUserPointer(win);
+			if (button == 0) s->on_left_mouse(action == GLFW_PRESS);
+		});
+
+		glfwSetScrollCallback(win, [] (GLFWwindow * win, double xoffset, double yoffset) {
+			ImGuiIO& io = ImGui::GetIO();
+			if (io.WantCaptureMouse)
+				return;
+
+			auto s = (window*) glfwGetWindowUserPointer(win);
+			s->on_mouse_scroll(xoffset, yoffset);
+		});
+
+		glfwSetCursorPosCallback(win, [] (GLFWwindow * win, double x, double y) {
+			ImGuiIO& io = ImGui::GetIO();
+			if (io.WantCaptureMouse)
+				return;
+
+			auto s = (window*) glfwGetWindowUserPointer(win);
+			s->on_mouse_move(x, y);
+		});
+
+		glfwSetKeyCallback(win, [] (GLFWwindow * win, int key, int scancode, int action, int mods) {
+			ImGuiIO& io = ImGui::GetIO();
+			if (io.WantCaptureMouse)
+				return;
+
+			auto s = (window*) glfwGetWindowUserPointer(win);
+			if (0 == action) // on key release
+			{
+				s->on_key_release(key);
+			}
+		});
+	}
+
+	float width() const { return float(_width); }
+	float height() const { return float(_height); }
+
+	operator bool()
+	{
+		glPopMatrix();
+		glfwSwapBuffers(win);
+
+		auto res = !glfwWindowShouldClose(win);
+
+		glfwPollEvents();
+		glfwGetFramebufferSize(win, &_width, &_height);
+
+		// Clear the framebuffer
+		glClear(GL_COLOR_BUFFER_BIT);
+		glViewport(0, 0, _width, _height);
+
+		// Draw the images
+		glPushMatrix();
+		glfwGetWindowSize(win, &_width, &_height);
+		glOrtho(0, _width, _height, 0, -1, +1);
+
+		return res;
+	}
+
+	~window()
+	{
+		glfwDestroyWindow(win);
+		glfwTerminate();
+	}
+
+	operator GLFWwindow*() { return win; }
+
+private:
+	GLFWwindow* win;
+	int _width, _height;
+};
+
+// Registers the state variable and callbacks to allow mouse control of the pointcloud
+void register_glfw_callbacks(window& app, glfw_state& app_state)
+{
+	app.on_left_mouse = [&] (bool pressed) {
+		app_state.ml = pressed;
+	};
+
+	app.on_mouse_scroll = [&] (double xoffset, double yoffset) {
+		app_state.offset_x -= static_cast<float>(xoffset);
+		app_state.offset_y -= static_cast<float>(yoffset);
+	};
+
+	app.on_mouse_move = [&] (double x, double y) {
+		if (app_state.ml) {
+			app_state.yaw -= (x - app_state.last_x);
+			app_state.yaw = std::max(app_state.yaw, -120.0);
+			app_state.yaw = std::min(app_state.yaw, +120.0);
+			app_state.pitch += (y - app_state.last_y);
+			app_state.pitch = std::max(app_state.pitch, -80.0);
+			app_state.pitch = std::min(app_state.pitch, +80.0);
+		}
+		app_state.last_x = x;
+		app_state.last_y = y;
+	};
+
+	app.on_key_release = [&] (int key) {
+		if (key == 32) // Escape
+		{
+			app_state.yaw = app_state.pitch = 0; app_state.offset_x = app_state.offset_y = 0.0;
+		}
+	};
+}
+
 void draw_pointcloud(window& app, state& app_state, const std::vector<pcl_ptr>& points);
+
+// Registers the state variable and callbacks to allow mouse control of the pointcloud
+void register_glfw_callbacks(window& app, state& app_state)
+{
+	app.on_left_mouse = [&] (bool pressed) {
+		app_state.ml = pressed;
+	};
+
+	app.on_mouse_scroll = [&] (double xoffset, double yoffset) {
+		app_state.offset_x += static_cast<float>(xoffset);
+		app_state.offset_y += static_cast<float>(yoffset);
+	};
+
+	app.on_mouse_move = [&] (double x, double y) {
+		if (app_state.ml) {
+			app_state.yaw -= (x - app_state.last_x);
+			app_state.yaw = std::max(app_state.yaw, -120.0);
+			app_state.yaw = std::min(app_state.yaw, +120.0);
+			app_state.pitch += (y - app_state.last_y);
+			app_state.pitch = std::max(app_state.pitch, -80.0);
+			app_state.pitch = std::min(app_state.pitch, +80.0);
+		}
+		app_state.last_x = x;
+		app_state.last_y = y;
+	};
+
+	app.on_key_release = [&] (int key) {
+		if (key == 32) // Escape
+		{
+			app_state.yaw = app_state.pitch = 0; app_state.offset_x = app_state.offset_y = 0.0;
+		}
+	};
+}
+
+// Handles all the OpenGL calls needed to display the point cloud
+void draw_pointcloud(window& app, state& app_state, const std::vector<pcl_ptr>& points)
+{
+	// OpenGL commands that prep screen for the pointcloud
+	glPopMatrix();
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+
+	float width = app.width(), height = app.height();
+
+	glClearColor(153.f / 255, 153.f / 255, 153.f / 255, 1);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	gluPerspective(60, width / height, 0.01f, 10.0f);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	gluLookAt(0, 0, 0, 0, 0, 1, 0, -1, 0);
+
+	glTranslatef(0, 0, +0.5f + app_state.offset_y*0.05f);
+	glRotated(app_state.pitch, 1, 0, 0);
+	glRotated(app_state.yaw, 0, 1, 0);
+	glTranslatef(0, 0, -0.5f);
+
+	glPointSize(width / 640);
+	glEnable(GL_TEXTURE_2D);
+
+	int color = 0;
+
+	for (auto&& pc : points) {
+		glBegin(GL_POINTS);
+		glPointSize(5);
+
+		/* this segment actually prints the pointcloud */
+		for (int i = 0; i < pc->points.size(); i++) {
+			auto&& p = pc->points[i];
+			if (p.z) {
+				// upload the point and texture coordinates only for points we have depth data for
+				glColor3f(float(p.r) / 255.f, float(p.g) / 255.f, float(p.b) / 255.f);
+				glVertex3f(p.x, p.y, p.z);
+			}
+		}
+
+		glEnd();
+	}
+
+	// OpenGL cleanup
+	glPopMatrix();
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glPopAttrib();
+	glPushMatrix();
+}
 
 bool get_texcolor(const rs2::video_frame *frame, float u, float v, uint8_t &r, uint8_t &g, uint8_t &b)
 {
@@ -171,6 +392,8 @@ int main(int argc, char * argv[]) try
 
     // Create a simple OpenGL window for rendering:
     window app(1280, 720, "Earth Rover PCL Pipeline");
+	ImGui_ImplGlfw_Init(app, false);
+
     // Construct an object to manage view state
     state app_state;
     // register callbacks to allow manipulation of the pointcloud
@@ -202,8 +425,25 @@ int main(int argc, char * argv[]) try
 	er_pointcloud pc;
 
 	pointcloud pc2;
+
+	bool show_app = true;
+
+	float min_nvdi = 100;
+	float cur_nvdi = -100;
+	float max_nvdi = -100;
+
 	while (app) // Application still alive?
     {
+		static const int flags = ImGuiWindowFlags_NoCollapse
+			| ImGuiWindowFlags_NoScrollbar
+			| ImGuiWindowFlags_NoSavedSettings
+			| ImGuiWindowFlags_NoTitleBar
+			| ImGuiWindowFlags_NoResize
+			| ImGuiWindowFlags_NoMove;
+
+		ImGui_ImplGlfw_NewFrame(1);
+		ImGui::SetNextWindowSize({ 300, 100 });
+		ImGui::Begin("app", nullptr, flags);
 
 		// Wait for the next set of frames from the camera
 
@@ -271,12 +511,19 @@ int main(int argc, char * argv[]) try
 							get_texcolor(&color, tex_coords[i].u, tex_coords[i].v, p.r, p.g, p.b);
 
 							float nvdi = float(p.a - p.r) / (p.a + p.r);
-							if (nvdi < - 0.25) {
+							if (nvdi < cur_nvdi) {
 								p.r = 0;
 								p.g = 0;
 								p.b = 0;
 								//printf(" NVDI %2.2f \n ", nvdi);
 							}
+
+							if (nvdi < min_nvdi)
+								min_nvdi = nvdi;
+
+							if (nvdi > max_nvdi)
+								max_nvdi = nvdi;
+
 						}
 						i++;
 						ptr++;
@@ -296,6 +543,21 @@ int main(int argc, char * argv[]) try
 			}
 
 		draw_pointcloud(app, app_state, layers);
+
+		ImGui::Text("NVDI");
+		ImGui::SliderFloat("float", &cur_nvdi, min_nvdi, max_nvdi);
+
+		/*
+		ImGui::Begin("About Dear ImGui", &show_app, ImGuiWindowFlags_AlwaysAutoResize);
+		ImGui::Text("Dear ImGui, %s", ImGui::GetVersion());
+		ImGui::Separator();
+		ImGui::Text("By Omar Cornut and all dear imgui contributors.");
+		ImGui::Text("Dear ImGui is licensed under the MIT License, see LICENSE for more information.");
+		ImGui::End();
+		*/
+
+		ImGui::End();
+		ImGui::Render();
     }
 
     return EXIT_SUCCESS;
@@ -309,102 +571,4 @@ catch (const std::exception & e)
 {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;
-}
-
-// Registers the state variable and callbacks to allow mouse control of the pointcloud
-void register_glfw_callbacks(window& app, state& app_state)
-{
-    app.on_left_mouse = [&](bool pressed)
-    {
-        app_state.ml = pressed;
-    };
-
-    app.on_mouse_scroll = [&](double xoffset, double yoffset)
-    {
-        app_state.offset_x += static_cast<float>(xoffset);
-        app_state.offset_y += static_cast<float>(yoffset);
-    };
-
-    app.on_mouse_move = [&](double x, double y)
-    {
-        if (app_state.ml)
-        {
-            app_state.yaw -= (x - app_state.last_x);
-            app_state.yaw = std::max(app_state.yaw, -120.0);
-            app_state.yaw = std::min(app_state.yaw, +120.0);
-            app_state.pitch += (y - app_state.last_y);
-            app_state.pitch = std::max(app_state.pitch, -80.0);
-            app_state.pitch = std::min(app_state.pitch, +80.0);
-        }
-        app_state.last_x = x;
-        app_state.last_y = y;
-    };
-
-    app.on_key_release = [&](int key)
-    {
-        if (key == 32) // Escape
-        {
-            app_state.yaw = app_state.pitch = 0; app_state.offset_x = app_state.offset_y = 0.0;
-        }
-    };
-}
-
-// Handles all the OpenGL calls needed to display the point cloud
-void draw_pointcloud(window& app, state& app_state, const std::vector<pcl_ptr>& points)
-{
-    // OpenGL commands that prep screen for the pointcloud
-    glPopMatrix();
-    glPushAttrib(GL_ALL_ATTRIB_BITS);
-
-    float width = app.width(), height = app.height();
-
-    glClearColor(153.f / 255, 153.f / 255, 153.f / 255, 1);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    gluPerspective(60, width / height, 0.01f, 10.0f);
-
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    gluLookAt(0, 0, 0, 0, 0, 1, 0, -1, 0);
-
-    glTranslatef(0, 0, +0.5f + app_state.offset_y*0.05f);
-    glRotated(app_state.pitch, 1, 0, 0);
-    glRotated(app_state.yaw, 0, 1, 0);
-    glTranslatef(0, 0, -0.5f);
-
-    glPointSize(width / 640);
-    glEnable(GL_TEXTURE_2D);
-
-    int color = 0;
-
-    for (auto&& pc : points)
-    {
-        auto c = colors[(color++) % (sizeof(colors) / sizeof(float3))];
-
-        glBegin(GL_POINTS);
-		glPointSize(5);
-
-		/* this segment actually prints the pointcloud */
-        for (int i = 0; i < pc->points.size(); i++)
-        {
-            auto&& p = pc->points[i];
-            if (p.z)
-            {
-                // upload the point and texture coordinates only for points we have depth data for
-				glColor3f(float(p.r) / 255.f, float(p.g) / 255.f, float(p.b) / 255.f);
-				glVertex3f(p.x, p.y, p.z);
-            }
-        }
-
-        glEnd();
-    }
-
-    // OpenGL cleanup
-    glPopMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glPopAttrib();
-    glPushMatrix();
 }
