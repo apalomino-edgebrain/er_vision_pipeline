@@ -277,7 +277,6 @@ int main(int argc, char * argv[]) try
 								p.b = 0;
 								//printf(" NVDI %2.2f \n ", nvdi);
 							}
-
 						}
 						i++;
 						ptr++;
@@ -289,7 +288,7 @@ int main(int argc, char * argv[]) try
 				pcl::PassThrough<pcl::PointXYZRGBA> pass;
 				pass.setInputCloud(cloud);
 				pass.setFilterFieldName("z");
-				pass.setFilterLimits(0.0, 5.0);
+				pass.setFilterLimits(0.0, 10.0);
 				pass.filter(*cloud_filtered);
 				layers.push_back(cloud_filtered);
 
