@@ -3,9 +3,6 @@
 
 #pragma once
 
-#define GLFW_INCLUDE_GLU
-#include <GLFW/glfw3.h>
-
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -201,3 +198,144 @@ void draw_pointcloud(float width, float height, glfw_state& app_state, rs2::poin
 	glPopAttrib();
 	glPushMatrix();
 }
+
+class window
+{
+public:
+	std::function<void(bool)>           on_left_mouse = [] (bool) {};
+	std::function<void(double, double)> on_mouse_scroll = [] (double, double) {};
+	std::function<void(double, double)> on_mouse_move = [] (double, double) {};
+	std::function<void(int)>            on_key_release = [] (int) {};
+
+	window(int width, int height, const char* title)
+		: _width(width), _height(height)
+	{
+		glfwInit();
+		win = glfwCreateWindow(width, height, title, nullptr, nullptr);
+		if (!win)
+			throw std::runtime_error("Could not open OpenGL window, please check your graphic drivers or use the textual SDK tools");
+		glfwMakeContextCurrent(win);
+
+		glfwSetWindowUserPointer(win, this);
+		glfwSetMouseButtonCallback(win, [] (GLFWwindow * win, int button, int action, int mods) {
+			ImGuiIO& io = ImGui::GetIO();
+			if (io.WantCaptureMouse)
+				return;
+
+			auto s = (window*) glfwGetWindowUserPointer(win);
+			if (button == 0) s->on_left_mouse(action == GLFW_PRESS);
+		});
+
+		glfwSetScrollCallback(win, [] (GLFWwindow * win, double xoffset, double yoffset) {
+			ImGuiIO& io = ImGui::GetIO();
+			if (io.WantCaptureMouse)
+				return;
+
+			auto s = (window*) glfwGetWindowUserPointer(win);
+			s->on_mouse_scroll(xoffset, yoffset);
+		});
+
+		glfwSetCursorPosCallback(win, [] (GLFWwindow * win, double x, double y) {
+			ImGuiIO& io = ImGui::GetIO();
+			if (io.WantCaptureMouse)
+				return;
+
+			auto s = (window*) glfwGetWindowUserPointer(win);
+			s->on_mouse_move(x, y);
+		});
+
+		glfwSetKeyCallback(win, [] (GLFWwindow * win, int key, int scancode, int action, int mods) {
+			ImGuiIO& io = ImGui::GetIO();
+			if (io.WantCaptureMouse)
+				return;
+
+			auto s = (window*) glfwGetWindowUserPointer(win);
+			if (0 == action) // on key release
+			{
+				s->on_key_release(key);
+			}
+		});
+	}
+
+	float width() const { return float(_width); }
+	float height() const { return float(_height); }
+
+	operator bool()
+	{
+		glPopMatrix();
+		glfwSwapBuffers(win);
+
+		auto res = !glfwWindowShouldClose(win);
+
+		glfwPollEvents();
+		glfwGetFramebufferSize(win, &_width, &_height);
+
+		// Clear the framebuffer
+		glClear(GL_COLOR_BUFFER_BIT);
+		glViewport(0, 0, _width, _height);
+
+		// Draw the images
+		glPushMatrix();
+		glfwGetWindowSize(win, &_width, &_height);
+		glOrtho(0, _width, _height, 0, -1, +1);
+
+		return res;
+	}
+
+	~window()
+	{
+		glfwDestroyWindow(win);
+		glfwTerminate();
+	}
+
+	operator GLFWwindow*() { return win; }
+
+private:
+	GLFWwindow* win;
+	int _width, _height;
+};
+
+// Registers the state variable and callbacks to allow mouse control of the pointcloud
+void register_glfw_callbacks(window& app, glfw_state& app_state)
+{
+	app.on_left_mouse = [&] (bool pressed) {
+		app_state.ml = pressed;
+	};
+
+	app.on_mouse_scroll = [&] (double xoffset, double yoffset) {
+		app_state.offset_x -= static_cast<float>(xoffset);
+		app_state.offset_y -= static_cast<float>(yoffset);
+	};
+
+	app.on_mouse_move = [&] (double x, double y) {
+		if (app_state.ml) {
+			app_state.yaw -= (x - app_state.last_x);
+			app_state.yaw = std::max(app_state.yaw, -120.0);
+			app_state.yaw = std::min(app_state.yaw, +120.0);
+			app_state.pitch += (y - app_state.last_y);
+			app_state.pitch = std::max(app_state.pitch, -80.0);
+			app_state.pitch = std::min(app_state.pitch, +80.0);
+		}
+		app_state.last_x = x;
+		app_state.last_y = y;
+	};
+
+	app.on_key_release = [&] (int key) {
+		if (key == 32) // Escape
+		{
+			app_state.yaw = app_state.pitch = 0; app_state.offset_x = app_state.offset_y = 0.0;
+		}
+	};
+}
+
+// Struct for managing rotation of pointcloud view
+struct state
+{
+	state() : yaw(0.0), pitch(0.0), last_x(0.0), last_y(0.0),
+		ml(false), offset_x(0.0f), offset_y(0.0f)
+	{
+	}
+	double yaw, pitch, last_x, last_y; bool ml; float offset_x, offset_y;
+};
+
+void draw_pointcloud(window& app, state& app_state, const std::vector<pcl_ptr>& points);

@@ -1,157 +1,34 @@
-// License: Apache 2.0. See LICENSE file in root directory.
-// Copyright(c) 2015-2017 Intel Corporation. All Rights Reserved.
+//#############################################################################
+                                 /*-:::--.`
+                            -+shmMMNmmddmmNMNmho/.
+                 `yyo++osddMms:                  `/yNNy-
+              yo    +mMy:                       `./dMMdyssssso-
+              oy  -dMy.                     `-+ssso:.`:mMy`   .ys
+                ho+MN:                  `:osso/.         oMm-   +h
+                +Mmd-           `/syo-                     :MNhs`
+                `NM-.hs`      :syo:                          sMh
+                oMh   :ho``/yy+.                             `MM.
+                hM+    `yNN/`                                 dM+
+                dM/  -sy/`/ho`                                hMo
+                hMo/ho.     :yy-                             dM/
+            :dNM/             :yy:                         yMy
+            sy`:MN.              `+ys-                     +Mm`
+            oy`   :NM+                  .+ys/`           `hMd.ys
+            /sssssyNMm:                   `:sys:`     `oNN+   m-
+                        .sNMh+.                   `:sNMdyysssssy:
+                        -odMNhs+:-.`    `.-/oydMNh+.
+                            `-+shdNMMMMMMMNmdyo/.
+                                    `````*/
+//#############################################################################
+// Point cloud processing from the Realsense
+//
+// Integrates the PCL library to enable a tool to perform analyse on the images
+// and video
+//#############################################################################
 
-#include <librealsense2/rs.hpp> // Include RealSense Cross Platform API
-
-#define GLFW_INCLUDE_GLU
-#include <GLFW/glfw3.h>
-#include <imgui.h>
-#include "imgui_impl_glfw.h"
-
+#include "er-pipeline.h"
+#include "process_3d.h"
 #include "window_control.h"
-
-#include <pcl/point_types.h>
-#include <pcl/filters/passthrough.h>
-
-// Struct for managing rotation of pointcloud view
-struct state {
-    state() : yaw(0.0), pitch(0.0), last_x(0.0), last_y(0.0),
-        ml(false), offset_x(0.0f), offset_y(0.0f) {}
-    double yaw, pitch, last_x, last_y; bool ml; float offset_x, offset_y;
-};
-
-using pcl_ptr = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr;
-
-class window
-{
-public:
-	std::function<void(bool)>           on_left_mouse = [] (bool) {};
-	std::function<void(double, double)> on_mouse_scroll = [] (double, double) {};
-	std::function<void(double, double)> on_mouse_move = [] (double, double) {};
-	std::function<void(int)>            on_key_release = [] (int) {};
-
-	window(int width, int height, const char* title)
-		: _width(width), _height(height)
-	{
-		glfwInit();
-		win = glfwCreateWindow(width, height, title, nullptr, nullptr);
-		if (!win)
-			throw std::runtime_error("Could not open OpenGL window, please check your graphic drivers or use the textual SDK tools");
-		glfwMakeContextCurrent(win);
-
-		glfwSetWindowUserPointer(win, this);
-		glfwSetMouseButtonCallback(win, [] (GLFWwindow * win, int button, int action, int mods) {
-			ImGuiIO& io = ImGui::GetIO();
-			if (io.WantCaptureMouse)
-				return;
-
-			auto s = (window*) glfwGetWindowUserPointer(win);
-			if (button == 0) s->on_left_mouse(action == GLFW_PRESS);
-		});
-
-		glfwSetScrollCallback(win, [] (GLFWwindow * win, double xoffset, double yoffset) {
-			ImGuiIO& io = ImGui::GetIO();
-			if (io.WantCaptureMouse)
-				return;
-
-			auto s = (window*) glfwGetWindowUserPointer(win);
-			s->on_mouse_scroll(xoffset, yoffset);
-		});
-
-		glfwSetCursorPosCallback(win, [] (GLFWwindow * win, double x, double y) {
-			ImGuiIO& io = ImGui::GetIO();
-			if (io.WantCaptureMouse)
-				return;
-
-			auto s = (window*) glfwGetWindowUserPointer(win);
-			s->on_mouse_move(x, y);
-		});
-
-		glfwSetKeyCallback(win, [] (GLFWwindow * win, int key, int scancode, int action, int mods) {
-			ImGuiIO& io = ImGui::GetIO();
-			if (io.WantCaptureMouse)
-				return;
-
-			auto s = (window*) glfwGetWindowUserPointer(win);
-			if (0 == action) // on key release
-			{
-				s->on_key_release(key);
-			}
-		});
-	}
-
-	float width() const { return float(_width); }
-	float height() const { return float(_height); }
-
-	operator bool()
-	{
-		glPopMatrix();
-		glfwSwapBuffers(win);
-
-		auto res = !glfwWindowShouldClose(win);
-
-		glfwPollEvents();
-		glfwGetFramebufferSize(win, &_width, &_height);
-
-		// Clear the framebuffer
-		glClear(GL_COLOR_BUFFER_BIT);
-		glViewport(0, 0, _width, _height);
-
-		// Draw the images
-		glPushMatrix();
-		glfwGetWindowSize(win, &_width, &_height);
-		glOrtho(0, _width, _height, 0, -1, +1);
-
-		return res;
-	}
-
-	~window()
-	{
-		glfwDestroyWindow(win);
-		glfwTerminate();
-	}
-
-	operator GLFWwindow*() { return win; }
-
-private:
-	GLFWwindow* win;
-	int _width, _height;
-};
-
-// Registers the state variable and callbacks to allow mouse control of the pointcloud
-void register_glfw_callbacks(window& app, glfw_state& app_state)
-{
-	app.on_left_mouse = [&] (bool pressed) {
-		app_state.ml = pressed;
-	};
-
-	app.on_mouse_scroll = [&] (double xoffset, double yoffset) {
-		app_state.offset_x -= static_cast<float>(xoffset);
-		app_state.offset_y -= static_cast<float>(yoffset);
-	};
-
-	app.on_mouse_move = [&] (double x, double y) {
-		if (app_state.ml) {
-			app_state.yaw -= (x - app_state.last_x);
-			app_state.yaw = std::max(app_state.yaw, -120.0);
-			app_state.yaw = std::min(app_state.yaw, +120.0);
-			app_state.pitch += (y - app_state.last_y);
-			app_state.pitch = std::max(app_state.pitch, -80.0);
-			app_state.pitch = std::min(app_state.pitch, +80.0);
-		}
-		app_state.last_x = x;
-		app_state.last_y = y;
-	};
-
-	app.on_key_release = [&] (int key) {
-		if (key == 32) // Escape
-		{
-			app_state.yaw = app_state.pitch = 0; app_state.offset_x = app_state.offset_y = 0.0;
-		}
-	};
-}
-
-void draw_pointcloud(window& app, state& app_state, const std::vector<pcl_ptr>& points);
 
 // Registers the state variable and callbacks to allow mouse control of the pointcloud
 void register_glfw_callbacks(window& app, state& app_state)
@@ -206,7 +83,7 @@ void draw_pointcloud(window& app, state& app_state, const std::vector<pcl_ptr>& 
 	glPushMatrix();
 	gluLookAt(0, 0, 0, 0, 0, 1, 0, -1, 0);
 
-	glTranslatef(0, 0, +0.5f + app_state.offset_y*0.05f);
+	glTranslatef(0, 0, 1.5f + app_state.offset_y*0.05f);
 	glRotated(app_state.pitch, 1, 0, 0);
 	glRotated(app_state.yaw, 0, 1, 0);
 	glTranslatef(0, 0, -0.5f);
@@ -374,6 +251,43 @@ private:
 	frame_queue _queue;
 };
 
+void draw_polygons(window& app, state& app_state)
+{
+	// OpenGL commands that prep screen for the pointcloud
+	glPopMatrix();
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+
+	float width = app.width(), height = app.height();
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	gluPerspective(60, width / height, 0.01f, 10.0f);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	gluLookAt(0, 0, 0, 0, 0, 1, 0, -1, 0);
+
+	glTranslatef(0, 0, +0.5f + app_state.offset_y*0.05f);
+	glRotated(app_state.pitch, 1, 0, 0);
+	glRotated(app_state.yaw, 0, 1, 0);
+	glTranslatef(0, 0, -0.5f);
+
+	//----------
+	glBegin(GL_TRIANGLES);
+
+	glColor3f(0.5f, 0.0f, 1.0f);
+	glVertex3f(-1.0f, -0.5f, 4.0f);
+	glVertex3f(1.0f, 0.5f, 4.0f);
+	glVertex3f(0.0f, 0.5f, 4.0f);
+	glEnd();
+	//----------
+
+	glPopMatrix();
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glPopAttrib();
+	glPushMatrix();
+}
 
 int main(int argc, char * argv[]) try
 {
@@ -428,22 +342,35 @@ int main(int argc, char * argv[]) try
 
 	bool show_app = true;
 
-	float min_nvdi = 100;
-	float cur_nvdi = -100;
-	float max_nvdi = -100;
+	bool show_analysis = true;
+
+	bool show_ground = true;
+	bool show_plants = true;
+
+	bool bool_cloud_raw = false;
+	bool bool_color_cluster = false;
+	bool bool_distance_filter = true;
+	bool bool_voxel_process = false;
+
+	float min_nvdi = 1;
+	float cur_nvdi = -1;
+	float max_nvdi = -1;
+
+	float cur_max_clip[3] = { 0, 1, 1 };
+	float cur_min_clip[3] = { 0, 0, 0 };
+
+	float min_clip[3] = { 0, 0, 50 };
+	float max_clip[3] = { 0, 50, -50 };
+
+	ImGui::SetNextWindowSize({ 300, 100 });
+
+	er::field_map field;
 
 	while (app) // Application still alive?
     {
-		static const int flags = ImGuiWindowFlags_NoCollapse
-			| ImGuiWindowFlags_NoScrollbar
-			| ImGuiWindowFlags_NoSavedSettings
-			| ImGuiWindowFlags_NoTitleBar
-			| ImGuiWindowFlags_NoResize
-			| ImGuiWindowFlags_NoMove;
+		static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
 
 		ImGui_ImplGlfw_NewFrame(1);
-		ImGui::SetNextWindowSize({ 300, 100 });
-		ImGui::Begin("app", nullptr, flags);
 
 		// Wait for the next set of frames from the camera
 
@@ -452,21 +379,25 @@ int main(int argc, char * argv[]) try
 				layers.clear();
 
 				auto depth = frames.get_depth_frame();
+
+				uint32_t frame = frames.get_frame_number();
+
 				rs2::video_frame color = frames.get_color_frame();
 				rs2::video_frame infrared = frames.get_infrared_frame();
 
 				// Find and colorize the depth data
-				//rs2::video_frame color_depth_map = color_map(frames.get_depth_frame());
+				// rs2::video_frame color_depth_map = color_map(frames.get_depth_frame());
 
 				// Generate the pointcloud and texture mappings
 				// We want the points object to be persistent so we can display the last cloud when a frame drops
 
+				//------------- Point cloud creation ------------------------
+				rs2::points points;
+
+				points = pc2.calculate(depth);
+
 				pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
-
 				{
-					rs2::points points;
-					points = pc2.calculate(depth);
-
 					auto sp = points.get_profile().as<rs2::video_stream_profile>();
 					cloud->width = sp.width();
 					cloud->height = sp.height();
@@ -484,6 +415,22 @@ int main(int argc, char * argv[]) try
 						p.x = ptr->x;
 						p.y = ptr->y;
 						p.z = ptr->z;
+
+						//-- Z Clipping max and min values--
+
+						if (p.z > max_clip[2])
+							max_clip[2] = p.z;
+
+						if (p.z < min_clip[2])
+							min_clip[2] = p.z;
+
+						//-- Y Clipping max and min values--
+						if (p.y > max_clip[1])
+							max_clip[1] = p.y;
+
+						if (p.y < min_clip[1])
+							min_clip[1] = p.y;
+
 						get_texinfrared(&infrared, tex_coords[i].u, tex_coords[i].v, p.a);
 						p.r = p.g = p.b = p.a;
 
@@ -492,6 +439,8 @@ int main(int argc, char * argv[]) try
 					}
 
 				}
+
+				//------------- Infrared extraction ------------------------
 
 				{
 					rs2::points points;
@@ -511,11 +460,22 @@ int main(int argc, char * argv[]) try
 							get_texcolor(&color, tex_coords[i].u, tex_coords[i].v, p.r, p.g, p.b);
 
 							float nvdi = float(p.a - p.r) / (p.a + p.r);
-							if (nvdi < cur_nvdi) {
-								p.r = 0;
-								p.g = 0;
-								p.b = 0;
-								//printf(" NVDI %2.2f \n ", nvdi);
+
+							if (show_ground && show_plants) {
+							} else {
+								if (show_ground) {
+									if (nvdi > cur_nvdi) {
+										p.r = p.g = p.b = 0;
+										p.z = -10;
+									}
+								}
+
+								if (show_plants) {
+									if (nvdi < cur_nvdi) {
+										p.r = p.g = p.b = 0;
+										p.z = -10;
+									}
+								}
 							}
 
 							if (nvdi < min_nvdi)
@@ -531,32 +491,154 @@ int main(int argc, char * argv[]) try
 
 				}
 
-				pcl_ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZRGBA>);
-				pcl::PassThrough<pcl::PointXYZRGBA> pass;
-				pass.setInputCloud(cloud);
-				pass.setFilterFieldName("z");
-				pass.setFilterLimits(0.0, 10.0);
-				pass.filter(*cloud_filtered);
-				layers.push_back(cloud_filtered);
 
-				//layers.push_back(cloud);
+				//----------- Normal computation ----------------------
+
+				// Create the normal estimation class, and pass the input dataset to it
+
+				//------------- Filter limit ------------------------
+				if (bool_distance_filter) {
+					pcl_ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZRGBA>);
+					pcl::PassThrough<pcl::PointXYZRGBA> pass;
+					pass.setInputCloud(cloud);
+					pass.setFilterFieldName("z");
+					pass.setFilterLimits(cur_min_clip[2], cur_max_clip[2]);
+
+					//pass.setFilterFieldName("y");
+					//pass.setFilterLimits(cur_min_clip[1], cur_max_clip[1]);
+
+					pass.filter(*cloud_filtered);
+
+					layers.push_back(cloud_filtered);
+					/*
+					pcl::NormalEstimation<pcl::PointXYZRGBA, pcl::Normal> ne;
+					ne.setInputCloud(cloud_filtered);
+					pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>());
+					ne.setSearchMethod(tree);
+					pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
+					ne.setRadiusSearch(0.3);
+
+					// Compute the features
+					ne.compute(*cloud_normals);
+					*/
+				} else
+				if (bool_cloud_raw) {
+					layers.push_back(cloud);
+				}
+
+				//------------- VOXEL -----------------------------
+				pcl_ptr cloud_voxel(new pcl::PointCloud<pcl::PointXYZRGBA>);
+
+				pcl::VoxelGrid<pcl::PointXYZRGBA> sor;
+				sor.setInputCloud(cloud);
+				sor.setLeafSize(0.1f, 0.1f, 0.1f);
+				sor.filter(*cloud_voxel);
+
+				if (bool_voxel_process) {
+					layers.push_back(cloud_voxel);
+				}
+
+				//------------- COLOR Cluster ------------------------
+
+				if (bool_color_cluster && cloud->points.size() > 0) {
+
+					pcl::search::Search <pcl::PointXYZRGBA>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZRGBA> >(new pcl::search::KdTree<pcl::PointXYZRGBA>);
+					pcl::IndicesPtr indices(new std::vector <int>);
+
+					pcl::PassThrough<pcl::PointXYZRGBA> pass;
+					pass.setInputCloud(cloud);
+					pass.setFilterFieldName("z");
+					pass.setFilterLimits(0.0, 10.0);
+					pass.filter(*indices);
+
+					pcl::RegionGrowingRGB<pcl::PointXYZRGBA> reg;
+					reg.setInputCloud(cloud);
+					reg.setIndices(indices);
+					reg.setSearchMethod(tree);
+					reg.setDistanceThreshold(1);
+					reg.setPointColorThreshold(6);
+					reg.setRegionColorThreshold(5);
+					reg.setMinClusterSize(600);
+
+					std::vector <pcl::PointIndices> clusters;
+					reg.extract(clusters);
+
+					pcl::PointCloud <pcl::PointXYZRGBA>::Ptr colored_cloud = reg.getColoredCloudRGBA();
+					if (colored_cloud)
+						layers.push_back(colored_cloud);
+				}
+
+
+				/*
+				// Normal estimation*
+				pcl::NormalEstimation<pcl::PointXYZRGBA, pcl::Normal> ne;
+				ne.setInputCloud(cloud);
+				pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>());
+
+				ne.setSearchMethod(tree);
+				ne.setKSearch(20);
+
+				pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
+				//ne.setRadiusSearch(0.3);
+				ne.compute(*cloud_normals);
+				*/
+
+				//* normals should not contain the point normals + surface curvatures
+
+				// Concatenate the XYZ and normal fields*
+				//pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
+				//pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
+
 			}
 
+		//------ BASIC FLOOR DISCOVERY & MAPPING ------
+		// Create floor grid
+		//  Width x Height
+
+		// Algorithm of floor removal and floor discovery
+		// Split in two clusters
+		//		1. Some green + and nvdi = Plant
+		//		2. No color, just ground
+
+		// Reduce floor cloud density with a voxelgrid
+		//
+		// Raytrace points from floor grid up to find the right position in space
+		//
+		// Classify between floor and plants
+
+
 		draw_pointcloud(app, app_state, layers);
+		//draw_polygons(app, app_state);
 
-		ImGui::Text("NVDI");
-		ImGui::SliderFloat("float", &cur_nvdi, min_nvdi, max_nvdi);
+		{
+			ImGui::Begin("app", nullptr, flags);
+			ImGui::Text("Color Spaces");
+			ImGui::SliderFloat("NVDI", &cur_nvdi, min_nvdi, max_nvdi);
+			//ImGui::SliderFloat("HSV", &cur_nvdi, min_nvdi, max_nvdi);
 
-		/*
-		ImGui::Begin("About Dear ImGui", &show_app, ImGuiWindowFlags_AlwaysAutoResize);
-		ImGui::Text("Dear ImGui, %s", ImGui::GetVersion());
-		ImGui::Separator();
-		ImGui::Text("By Omar Cornut and all dear imgui contributors.");
-		ImGui::Text("Dear ImGui is licensed under the MIT License, see LICENSE for more information.");
-		ImGui::End();
-		*/
+			ImGui::Text("Clipping Z");
+			ImGui::SliderFloat("Min Z", &cur_min_clip[2], min_clip[2], max_clip[2]);
+			ImGui::SliderFloat("Max Z", &cur_max_clip[2], min_clip[2], max_clip[2]);
 
-		ImGui::End();
+			ImGui::Text("Clipping Y");
+			ImGui::SliderFloat("clipping Y", &cur_max_clip[1], min_clip[1], max_clip[1]);
+			ImGui::End();
+		}
+
+		{
+			ImGui::Begin("Analysis", &show_analysis, flags);
+			ImGui::Checkbox("Show ground", &show_ground);
+			ImGui::Checkbox("Show plants", &show_plants);
+			ImGui::Separator();
+
+			ImGui::Checkbox("Raw Cloud", &bool_cloud_raw);
+			ImGui::Checkbox("Color cluster", &bool_color_cluster);
+			ImGui::Checkbox("Voxel Process", &bool_voxel_process);
+			ImGui::Checkbox("Distance Filter", &bool_distance_filter);
+
+			ImGui::End();
+		}
+
 		ImGui::Render();
     }
 
