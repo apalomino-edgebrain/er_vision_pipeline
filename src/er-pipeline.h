@@ -1,9 +1,31 @@
-#ifndef ER_PIPELINE_H_
-#define ER_PIPELINE_H_
-
+//#############################################################################
+                                 /*-:::--.`
+                            -+shmMMNmmddmmNMNmho/.
+                 `yyo++osddMms:                  `/yNNy-
+              yo    +mMy:                       `./dMMdyssssso-
+              oy  -dMy.                     `-+ssso:.`:mMy`   .ys
+                ho+MN:                  `:osso/.         oMm-   +h
+                +Mmd-           `/syo-                     :MNhs`
+                `NM-.hs`      :syo:                          sMh
+                oMh   :ho``/yy+.                             `MM.
+                hM+    `yNN/`                                 dM+
+                dM/  -sy/`/ho`                                hMo
+                hMo/ho.     :yy-                             dM/
+            :dNM/             :yy:                         yMy
+            sy`:MN.              `+ys-                     +Mm`
+            oy`   :NM+                  .+ys/`           `hMd.ys
+            /sssssyNMm:                   `:sys:`     `oNN+   m-
+                        .sNMh+.                   `:sNMdyysssssy:
+                        -odMNhs+:-.`    `.-/oydMNh+.
+                            `-+shdNMMMMMMMNmdyo/.
+                                    `````*/
 //#############################################################################
 // Pipeline to process our PointCloud data
 //#############################################################################
+
+#ifndef pipeline_H_
+#define pipeline_H_
+
 //
 // Our pipeline is based on the input from a realsense data and the extra
 // metadata captured by our capturing system.
@@ -65,6 +87,25 @@
 #define PCL_NO_PRECOMPILE
 
 //-----------------------------------------------------------------------------
+// STD
+//-----------------------------------------------------------------------------
+
+#include <vector>
+#include <string>
+
+using namespace std;
+
+//-----------------------------------------------------------------------------
+// BOOST System
+//-----------------------------------------------------------------------------
+
+#include <filesystem>
+#include <boost/filesystem.hpp>
+#include <iostream>
+
+using namespace boost::filesystem;
+
+//-----------------------------------------------------------------------------
 // PCL System
 //-----------------------------------------------------------------------------
 
@@ -94,23 +135,30 @@
 using pcl_ptr = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr;
 
 //-----------------------------------------------------------------------------
+// TOOLS
+//-----------------------------------------------------------------------------
+
+#include "er-logging.h"
+
+//-----------------------------------------------------------------------------
 // FARM PIPELINE
 //-----------------------------------------------------------------------------
 
 #include "process_3d.h"
 
 namespace er {
-	class er_pipeline
-	{
-		er_pipeline();
-		~er_pipeline();
+    class pipeline
+    {
+    public:
+        pipeline();
+        ~pipeline();
 
-		// Preconfigures a folder where the information for the video is stored.
-		// Preprocess all the information on that folder and caches the frame data
-		// in memory.
-		void initialize_folder(std::string folder_path);
+        // Preconfigures a folder where the information for the video is stored.
+        // Preprocess all the information on that folder and caches the frame data
+        // in memory.
+        void initialize_folder(std::string folder_path);
 
-	};
+    };
 }
 
 #endif

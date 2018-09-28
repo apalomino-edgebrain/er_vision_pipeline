@@ -1,3 +1,28 @@
+//#############################################################################
+                                 /*-:::--.`
+                            -+shmMMNmmddmmNMNmho/.
+                 `yyo++osddMms:                  `/yNNy-
+              yo    +mMy:                       `./dMMdyssssso-
+              oy  -dMy.                     `-+ssso:.`:mMy`   .ys
+                ho+MN:                  `:osso/.         oMm-   +h
+                +Mmd-           `/syo-                     :MNhs`
+                `NM-.hs`      :syo:                          sMh
+                oMh   :ho``/yy+.                             `MM.
+                hM+    `yNN/`                                 dM+
+                dM/  -sy/`/ho`                                hMo
+                hMo/ho.     :yy-                             dM/
+            :dNM/             :yy:                         yMy
+            sy`:MN.              `+ys-                     +Mm`
+            oy`   :NM+                  .+ys/`           `hMd.ys
+            /sssssyNMm:                   `:sys:`     `oNN+   m-
+                        .sNMh+.                   `:sNMdyysssssy:
+                        -odMNhs+:-.`    `.-/oydMNh+.
+                            `-+shdNMMMMMMMNmdyo/.
+                                    `````*/
+//#############################################################################
+// Field map in 3D space with time and data
+//#############################################################################
+
 #ifndef FIELD_MAP_H_
 #define FIELD_MAP_H_
 
@@ -30,7 +55,7 @@ namespace er {
 		uint32_t row_id;
 	};
 
-	class FieldManager
+	class field_manager
 	{
 
 
