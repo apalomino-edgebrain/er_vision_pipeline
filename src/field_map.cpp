@@ -25,7 +25,6 @@
 
 #include "er-pipeline.h"
 
-//#############################################################################
 // Exploratory code to define the structure for our fields map
 //
 // This object contains the field map information
@@ -37,5 +36,4 @@
 // space.
 //
 // [No optimization attempt is being done on this structures or resources]
-//#############################################################################
 

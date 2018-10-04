@@ -31,8 +31,14 @@
 //#include <igl/opengl/glfw/Viewer.h>
 
 #include "er-pipeline.h"
+
+#include <pcl/kdtree/kdtree_flann.h>
+
 #include "process_3d.h"
 #include "window_control.h"
+
+// Libigl integration test
+void launch_visualizer();
 
 // Registers the state variable and callbacks to allow mouse control of the pointcloud
 void register_glfw_callbacks(window& app, state& app_state)
@@ -158,7 +164,8 @@ bool get_texinfrared(const rs2::video_frame *frame, float u, float v, uint8_t &a
     return true;
 }
 
-pcl_ptr points_to_pcl(rs2::pointcloud &pc, const rs2::video_frame &color_depth_map, const rs2::video_frame &color, const rs2::video_frame &infrared, const rs2::points& points)
+pcl_ptr points_to_pcl(rs2::pointcloud &pc, const rs2::video_frame &color_depth_map,
+    const rs2::video_frame &color, const rs2::video_frame &infrared, const rs2::points& points)
 {
     pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
 
@@ -292,6 +299,36 @@ void draw_polygons(window& app, state& app_state)
 
 }
 
+void extract_plants(pcl_ptr cloud)
+{
+    // Set up KDTree
+    pcl::KdTreeFLANN<pcl::PointXYZRGBA>::Ptr tree(new pcl::KdTreeFLANN<pcl::PointXYZRGBA>);
+    tree->setInputCloud(cloud);
+
+    // Neighbors containers
+    std::vector<int> k_indices;
+    std::vector<float> k_distances;
+
+    float sigma_s = 1.0f;
+
+    int pnumber = cloud->size();
+
+    for (int point_id = 0; point_id < pnumber; ++point_id) {
+        //tree->radiusSearch(point_id, sigma_s, k_indices, k_distances);
+
+        // For each neighbor
+        /*
+        for (size_t n_id = 0; n_id < k_indices.size(); ++n_id) {
+            float id = k_indices.at(n_id);
+            float dist = sqrt(k_distances.at(n_id));
+        }
+        */
+    }
+}
+
+// Simplified push cloud.
+void push_cloud(pcl_ptr cloud);
+
 int main(int argc, char * argv[]) try {
 
 #ifdef WIN32
@@ -319,6 +356,9 @@ int main(int argc, char * argv[]) try {
         printf_h1("Loading %s ", file_record);
         read_file = true;
     }
+
+	Eigen::initParallel();
+	launch_visualizer();
 
     // Create a simple OpenGL window for rendering:
     window app(1280, 720, "Earth Rover PCL Pipeline");
@@ -404,6 +444,8 @@ int main(int argc, char * argv[]) try {
     bool playing_state = true;
     bool playing = true;
 
+    bool bool_extract_plants = false;
+
     while (app) // Application still alive?
     {
         static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
@@ -425,241 +467,252 @@ int main(int argc, char * argv[]) try {
             }
         }
 
-        if (playback)
-            if (pipe->poll_for_frames(&frames)) {
-                layers.clear();
+        pcl_ptr cloud_raw(new pcl::PointCloud<pcl::PointXYZRGBA>);
+        pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
 
-                auto depth = frames.get_depth_frame();
+        if (playback && pipe->poll_for_frames(&frames)) {
+            layers.clear();
 
-                uint32_t frame = frames.get_frame_number();
+            auto depth = frames.get_depth_frame();
 
-                rs2::video_frame color = frames.get_color_frame();
-                rs2::video_frame infrared = frames.get_infrared_frame();
+            uint32_t frame = frames.get_frame_number();
 
-                // Find and colorize the depth data
-                // rs2::video_frame color_depth_map = color_map(frames.get_depth_frame());
+            rs2::video_frame color = frames.get_color_frame();
+            rs2::video_frame infrared = frames.get_infrared_frame();
 
-                // Generate the pointcloud and texture mappings
-                // We want the points object to be persistent so we can display the last cloud when a frame drops
+            // Find and colorize the depth data
+            // rs2::video_frame color_depth_map = color_map(frames.get_depth_frame());
 
-                //------------- Point cloud creation ------------------------
-                rs2::points points;
+            // Generate the pointcloud and texture mappings
+            // We want the points object to be persistent so we can display the last cloud when a frame drops
 
-                points = pc2.calculate(depth);
+            //------------- Point cloud creation ------------------------
+            rs2::points points;
 
-                pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
-                {
-                    auto sp = points.get_profile().as<rs2::video_stream_profile>();
-                    cloud->width = sp.width();
-                    cloud->height = sp.height();
-                    cloud->is_dense = false;
-                    cloud->points.resize(points.size());
+            points = pc2.calculate(depth);
 
-                    pc2.map_to(infrared);
+            {
+                auto sp = points.get_profile().as<rs2::video_stream_profile>();
+                cloud_raw->points.clear();
+                cloud_raw->width = sp.width();
+                cloud_raw->height = sp.height();
+                cloud_raw->is_dense = false;
 
-                    auto ptr = points.get_vertices();
-                    auto tex_coords = points.get_texture_coordinates();
+                pc2.map_to(infrared);
 
-                    i = 0;
-                    for (auto& p : cloud->points) {
-                        p.x = ptr->x;
-                        p.y = ptr->y;
-                        p.z = ptr->z;
+                auto size = points.size();
+                auto ptr = points.get_vertices();
+                auto tex_coords = points.get_texture_coordinates();
 
-                        //-- Z Clipping max and min values--
+                for (i = 0; i < size; i++) {
+                    pcl::PointXYZRGBA p;
 
-                        if (p.z > max_clip[2])
-                            max_clip[2] = p.z;
+                    p.x = ptr->x;
+                    p.y = ptr->y;
+                    p.z = ptr->z;
 
-                        if (p.z < min_clip[2])
-                            min_clip[2] = p.z;
+                    //-- Z Clipping max and min values--
 
-                        //-- Y Clipping max and min values--
-                        if (p.y > max_clip[1])
-                            max_clip[1] = p.y;
+                    if (p.z > max_clip[2])
+                        max_clip[2] = p.z;
 
-                        if (p.y < min_clip[1])
-                            min_clip[1] = p.y;
+                    if (p.z < min_clip[2])
+                        min_clip[2] = p.z;
 
-                        get_texinfrared(&infrared, tex_coords[i].u, tex_coords[i].v, p.a);
-                        p.r = p.g = p.b = p.a;
+                    //-- Y Clipping max and min values--
+                    if (p.y > max_clip[1])
+                        max_clip[1] = p.y;
 
-                        i++;
-                        ptr++;
-                    }
+                    if (p.y < min_clip[1])
+                        min_clip[1] = p.y;
 
+                    get_texinfrared(&infrared, tex_coords[i].u, tex_coords[i].v, p.a);
+                    p.r = p.g = p.b = p.a;
+
+                    ptr++;
+                    cloud_raw->points.push_back(p);
                 }
 
-                //------------- Infrared extraction ------------------------
+            }
 
-                {
-                    rs2::points points;
-                    points = pc.calculate(depth);
+            //------------- Color extraction ------------------------
 
-                    pc.map_to(color);
+            {
+                rs2::points points;
+                points = pc.calculate(depth);
 
-                    auto ptr = points.get_vertices();
-                    auto tex_coords = points.get_texture_coordinates();
+                pc.map_to(color);
 
-                    i = 0;
-                    for (auto& p : cloud->points) {
-                        if (tex_coords[i].u < 0 || tex_coords[i].u > 1 || tex_coords[i].v < 0 || tex_coords[i].v > 1) {
+                auto ptr = points.get_vertices();
+                auto tex_coords = points.get_texture_coordinates();
+
+                cloud->points.clear();
+                i = 0;
+                for (auto& p : cloud_raw->points) {
+                    bool add_point = true;
+
+                    if (tex_coords[i].u < 0 || tex_coords[i].u > 1 || tex_coords[i].v < 0 || tex_coords[i].v > 1) {
+                    } else {
+                        get_texcolor(&color, tex_coords[i].u, tex_coords[i].v, p.r, p.g, p.b);
+
+                        float nvdi = float(p.a - p.r) / (p.a + p.r);
+
+                        if (show_ground && show_plants) {
                         } else {
-
-                            get_texcolor(&color, tex_coords[i].u, tex_coords[i].v, p.r, p.g, p.b);
-
-                            float nvdi = float(p.a - p.r) / (p.a + p.r);
-
-                            if (show_ground && show_plants) {
-                            } else {
-                                if (show_ground) {
-                                    if (nvdi > cur_nvdi) {
-                                        p.r = p.g = p.b = 0;
-                                        p.z = -10;
-                                    }
-
-                                    if (p.a < (cur_ir * 255.f)) {
-                                        p.g = p.b = 0;
-                                        p.r = p.a;
-                                    }
+                            if (show_ground) {
+                                if (nvdi > cur_nvdi) {
+                                    p.r = p.g = p.b = 0;
+                                    p.z = 0;
+                                    add_point = false;
                                 }
 
-                                if (show_plants) {
-                                    if (nvdi < cur_nvdi) {
-                                        if (bool_tint_nvdi) {
-                                            p.g = p.b = 0;
-                                            p.r = p.a;
-                                        } else {
-                                            //p.r = p.g = p.b = 0;
-                                            p.z = -10;
-                                        }
+                                if (p.a < (cur_ir * 255.f)) {
+                                    p.g = p.b = 0;
+                                    p.r = p.a;
+                                }
+                            }
+
+                            if (show_plants) {
+                                if (nvdi < cur_nvdi) {
+                                    if (bool_tint_nvdi) {
+                                        p.g = p.b = 0;
+                                        p.r = p.a;
                                     } else {
-                                        if (p.a < (cur_ir * 255.f)) {
-                                            if (bool_tint_ir) {
-                                                p.g = p.r = 0;
-                                                p.b = p.a;
-                                            } else {
-                                                p.z = -10;
-                                            }
+                                        add_point = false;
+                                    }
+                                } else {
+                                    if (p.a < (cur_ir * 255.f)) {
+                                        if (bool_tint_ir) {
+                                            p.g = p.r = 0;
+                                            p.b = p.a;
+                                        } else {
+                                            add_point = false;
                                         }
                                     }
                                 }
                             }
-
-                            if (nvdi < min_nvdi)
-                                min_nvdi = nvdi;
-
-                            if (nvdi > max_nvdi)
-                                max_nvdi = nvdi;
-
                         }
-                        i++;
-                        ptr++;
+
+                        if (nvdi < min_nvdi)
+                            min_nvdi = nvdi;
+
+                        if (nvdi > max_nvdi)
+                            max_nvdi = nvdi;
+
                     }
 
+                    if (add_point)
+                        cloud->points.push_back(p);
+
+                    i++;
+                    ptr++;
                 }
-
-                //rs2_frame* frame = rs2_extract_frame(frames, i, &e);
-                //float dist_to_center = rs2_depth_frame_get_distance(frame, width / 2, height / 2, &e);
-
-                //----------- Normal computation ----------------------
-
-                // Create the normal estimation class, and pass the input dataset to it
-
-                //------------- Filter limit ------------------------
-                if (bool_distance_filter) {
-                    pcl_ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZRGBA>);
-                    pcl::PassThrough<pcl::PointXYZRGBA> pass;
-                    pass.setInputCloud(cloud);
-                    pass.setFilterFieldName("z");
-                    pass.setFilterLimits(cur_min_clip[2], cur_max_clip[2]);
-
-                    //pass.setFilterFieldName("y");
-                    //pass.setFilterLimits(cur_min_clip[1], cur_max_clip[1]);
-
-                    pass.filter(*cloud_filtered);
-
-                    layers.push_back(cloud_filtered);
-                    /*
-                    pcl::NormalEstimation<pcl::PointXYZRGBA, pcl::Normal> ne;
-                    ne.setInputCloud(cloud_filtered);
-                    pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>());
-                    ne.setSearchMethod(tree);
-                    pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
-                    ne.setRadiusSearch(0.3);
-
-                    // Compute the features
-                    ne.compute(*cloud_normals);
-                    */
-                } else
-                    if (bool_cloud_raw) {
-                        layers.push_back(cloud);
-                    }
-
-                    //------------- VOXEL -----------------------------
-                pcl_ptr cloud_voxel(new pcl::PointCloud<pcl::PointXYZRGBA>);
-
-                pcl::VoxelGrid<pcl::PointXYZRGBA> sor;
-                sor.setInputCloud(cloud);
-                sor.setLeafSize(0.1f, 0.1f, 0.1f);
-                sor.filter(*cloud_voxel);
-
-                if (bool_voxel_process) {
-                    layers.push_back(cloud_voxel);
-                }
-
-                //------------- COLOR Cluster ------------------------
-
-                if (bool_color_cluster && cloud->points.size() > 0) {
-
-                    pcl::search::Search <pcl::PointXYZRGBA>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZRGBA> >(new pcl::search::KdTree<pcl::PointXYZRGBA>);
-                    pcl::IndicesPtr indices(new std::vector <int>);
-
-                    pcl::PassThrough<pcl::PointXYZRGBA> pass;
-                    pass.setInputCloud(cloud);
-                    pass.setFilterFieldName("z");
-                    pass.setFilterLimits(0.0, 10.0);
-                    pass.filter(*indices);
-
-                    pcl::RegionGrowingRGB<pcl::PointXYZRGBA> reg;
-                    reg.setInputCloud(cloud);
-                    reg.setIndices(indices);
-                    reg.setSearchMethod(tree);
-                    reg.setDistanceThreshold(1);
-                    reg.setPointColorThreshold(6);
-                    reg.setRegionColorThreshold(5);
-                    reg.setMinClusterSize(600);
-
-                    std::vector <pcl::PointIndices> clusters;
-                    reg.extract(clusters);
-
-                    pcl::PointCloud <pcl::PointXYZRGBA>::Ptr colored_cloud = reg.getColoredCloudRGBA();
-                    if (colored_cloud)
-                        layers.push_back(colored_cloud);
-                }
-
-
-                /*
-                // Normal estimation*
-                pcl::NormalEstimation<pcl::PointXYZRGBA, pcl::Normal> ne;
-                ne.setInputCloud(cloud);
-                pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>());
-
-                ne.setSearchMethod(tree);
-                ne.setKSearch(20);
-
-                pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
-                //ne.setRadiusSearch(0.3);
-                ne.compute(*cloud_normals);
-                */
-
-                //* normals should not contain the point normals + surface curvatures
-
-                // Concatenate the XYZ and normal fields*
-                //pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
-                //pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
 
             }
+
+            //rs2_frame* frame = rs2_extract_frame(frames, i, &e);
+            //float dist_to_center = rs2_depth_frame_get_distance(frame, width / 2, height / 2, &e);
+
+            //----------- Normal computation ----------------------
+
+            // Create the normal estimation class, and pass the input dataset to it
+
+            //------------- Filter limit ------------------------
+            if (bool_distance_filter) {
+                pcl_ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZRGBA>);
+                pcl::PassThrough<pcl::PointXYZRGBA> pass;
+                pass.setInputCloud(cloud);
+                pass.setFilterFieldName("z");
+                pass.setFilterLimits(cur_min_clip[2], cur_max_clip[2]);
+
+                //pass.setFilterFieldName("y");
+                //pass.setFilterLimits(cur_min_clip[1], cur_max_clip[1]);
+
+                pass.filter(*cloud_filtered);
+
+                layers.push_back(cloud_filtered);
+                /*
+                pcl::NormalEstimation<pcl::PointXYZRGBA, pcl::Normal> ne;
+                ne.setInputCloud(cloud_filtered);
+                pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>());
+                ne.setSearchMethod(tree);
+                pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
+                ne.setRadiusSearch(0.3);
+
+                // Compute the features
+                ne.compute(*cloud_normals);
+                */
+            } else
+                if (bool_cloud_raw) {
+                    layers.push_back(cloud);
+                }
+
+                //------------- VOXEL -----------------------------
+            pcl_ptr cloud_voxel(new pcl::PointCloud<pcl::PointXYZRGBA>);
+
+            pcl::VoxelGrid<pcl::PointXYZRGBA> sor;
+            sor.setInputCloud(cloud);
+            sor.setLeafSize(0.1f, 0.1f, 0.1f);
+            sor.filter(*cloud_voxel);
+
+            if (bool_voxel_process) {
+                layers.push_back(cloud_voxel);
+            }
+
+            //------------- COLOR Cluster ------------------------
+
+            if (bool_color_cluster && cloud->points.size() > 0) {
+
+                pcl::search::Search <pcl::PointXYZRGBA>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZRGBA> >(new pcl::search::KdTree<pcl::PointXYZRGBA>);
+                pcl::IndicesPtr indices(new std::vector <int>);
+
+                pcl::PassThrough<pcl::PointXYZRGBA> pass;
+                pass.setInputCloud(cloud);
+                pass.setFilterFieldName("z");
+                pass.setFilterLimits(0.0, 10.0);
+                pass.filter(*indices);
+
+                pcl::RegionGrowingRGB<pcl::PointXYZRGBA> reg;
+                reg.setInputCloud(cloud);
+                reg.setIndices(indices);
+                reg.setSearchMethod(tree);
+                reg.setDistanceThreshold(1);
+                reg.setPointColorThreshold(6);
+                reg.setRegionColorThreshold(5);
+                reg.setMinClusterSize(600);
+
+                std::vector <pcl::PointIndices> clusters;
+                reg.extract(clusters);
+
+                pcl::PointCloud <pcl::PointXYZRGBA>::Ptr colored_cloud = reg.getColoredCloudRGBA();
+                if (colored_cloud)
+                    layers.push_back(colored_cloud);
+            }
+
+            /*
+            // Normal estimation*
+            pcl::NormalEstimation<pcl::PointXYZRGBA, pcl::Normal> ne;
+            ne.setInputCloud(cloud);
+            pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>());
+
+            ne.setSearchMethod(tree);
+            ne.setKSearch(20);
+
+            pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
+            //ne.setRadiusSearch(0.3);
+            ne.compute(*cloud_normals);
+            */
+
+            //* normals should not contain the point normals + surface curvatures
+
+            // Concatenate the XYZ and normal fields*
+            //pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
+            //pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
+
+            if (bool_extract_plants) {
+                extract_plants(cloud);
+            }
+        }
 
         //------ BASIC FLOOR DISCOVERY & MAPPING ------
         // Create floor grid
@@ -702,6 +755,7 @@ int main(int argc, char * argv[]) try {
             ImGui::Begin("Analysis", &show_analysis, flags);
             ImGui::Checkbox("Show ground", &show_ground);
             ImGui::Checkbox("Show plants", &show_plants);
+            ImGui::Checkbox("Extract plants", &bool_extract_plants);
             ImGui::Separator();
 
             ImGui::Checkbox("Raw Cloud", &bool_cloud_raw);
@@ -714,6 +768,12 @@ int main(int argc, char * argv[]) try {
                 ImGui::Checkbox("Playing", &playing);
             else
                 ImGui::Checkbox("Pause", &playing);
+
+            ImGui::Separator();
+            ImGui::Text("-- Cloud --");
+            ImGui::Text("Raw %d", cloud_raw->points.size());
+            ImGui::Text("Process %d", cloud->points.size());
+
 
             ImGui::End();
         }
