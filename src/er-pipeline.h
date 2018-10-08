@@ -74,16 +74,6 @@
 // Examples https://github.com/nlohmann/json#examples
 #include "json/json.hpp"
 
-//-----------------------------------------------------------------------------
-// UI DRAWING
-//-----------------------------------------------------------------------------
-
-#define GLFW_INCLUDE_GLU
-#include <GLFW/glfw3.h>
-
-#include <imgui.h>
-#include "imgui_impl_glfw.h"
-
 #define PCL_NO_PRECOMPILE
 
 //-----------------------------------------------------------------------------

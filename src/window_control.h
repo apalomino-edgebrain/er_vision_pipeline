@@ -218,37 +218,41 @@ public:
 
 		glfwSetWindowUserPointer(win, this);
 		glfwSetMouseButtonCallback(win, [] (GLFWwindow * win, int button, int action, int mods) {
+#ifdef REALSENSE_USE_IMGUI
 			ImGuiIO& io = ImGui::GetIO();
 			if (io.WantCaptureMouse)
 				return;
-
+#endif
 			auto s = (window*) glfwGetWindowUserPointer(win);
 			if (button == 0) s->on_left_mouse(action == GLFW_PRESS);
 		});
 
 		glfwSetScrollCallback(win, [] (GLFWwindow * win, double xoffset, double yoffset) {
+#ifdef REALSENSE_USE_IMGUI
 			ImGuiIO& io = ImGui::GetIO();
 			if (io.WantCaptureMouse)
 				return;
-
+#endif
 			auto s = (window*) glfwGetWindowUserPointer(win);
 			s->on_mouse_scroll(xoffset, yoffset);
 		});
 
 		glfwSetCursorPosCallback(win, [] (GLFWwindow * win, double x, double y) {
+#ifdef REALSENSE_USE_IMGUI
 			ImGuiIO& io = ImGui::GetIO();
 			if (io.WantCaptureMouse)
 				return;
-
+#endif
 			auto s = (window*) glfwGetWindowUserPointer(win);
 			s->on_mouse_move(x, y);
 		});
 
 		glfwSetKeyCallback(win, [] (GLFWwindow * win, int key, int scancode, int action, int mods) {
+#ifdef REALSENSE_USE_IMGUI
 			ImGuiIO& io = ImGui::GetIO();
 			if (io.WantCaptureMouse)
 				return;
-
+#endif
 			auto s = (window*) glfwGetWindowUserPointer(win);
 			if (0 == action) // on key release
 			{

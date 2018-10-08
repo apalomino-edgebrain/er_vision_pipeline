@@ -20,60 +20,71 @@
                             `-+shdNMMMMMMMNmdyo/.
                                     `````*/
 //#############################################################################
-// Pipeline to process our PointCloud data
+// Application global state
 //#############################################################################
-//
-// See er-pipeline.h to get more information on the functionality and structure
-//
 
-#include "er-pipeline.h"
+#ifndef application_state_H_
+#define application_state_H_
 
-//-----------------------------------------------------------------------------
-// STD
-//-----------------------------------------------------------------------------
+namespace er {
+    class app_state
+    {
+    public:
+		app_state();
+        ~app_state();
 
-#include <string>
-using namespace std;
+        // Loads the application configuration.
+		// Here we specify if we have a frontend or not.
 
-//-----------------------------------------------------------------------------
-// BOOST System
-//-----------------------------------------------------------------------------
+        void load_configuration(std::string json_configuration_file);
 
-#include <boost/filesystem.hpp>
-using namespace boost::filesystem;
+		// Returns a singleton containing the application state.
+		static app_state &get()
+		{
+			static er::app_state instance;
+			return instance;
+		}
 
+		//-----------------------------------------------
+		// UI API
 
-er::pipeline::pipeline()
-{
-    printf("+ Initialize pipeline\n");
+		bool show_app = true;
+
+		bool show_analysis = true;
+
+		bool show_ground = true;
+		bool show_plants = true;
+
+		bool bool_cloud_raw = false;
+		bool bool_color_cluster = false;
+		bool bool_distance_filter = true;
+		bool bool_voxel_process = false;
+
+		bool bool_tint_nvdi = true;
+		bool bool_tint_ir = true;
+
+		float min_nvdi = 1;
+		float cur_nvdi = -1;
+		float max_nvdi = -1;
+
+		float min_ir = 0;
+		float cur_ir = 0;
+		float max_ir = 1;
+
+		float cur_max_clip[3] = { 0, 10, 10 };
+		float cur_min_clip[3] = { 0, 0, 0 };
+
+		float min_clip[3] = { 0, 0, 50 };
+		float max_clip[3] = { 0, 50, -50 };
+
+		//-----------------------------------------------
+		float point_scale = 0.01f;
+
+		//-----------------------------------------------
+		bool playing = true;
+		bool bool_extract_plants = false;
+    };
+
 }
 
-er::pipeline::~pipeline()
-{
-
-}
-
-void er::pipeline::initialize_folder(std::string folder_path)
-{
-	/*
-    path data_path(folder_path);
-    if (!is_directory(data_path)) {
-        data_path = data_path.parent_path();
-
-        if (!is_directory(data_path)) {
-            printf("! Error: Not a directory [%s]\n", folder_path.c_str());
-        }
-    } else {
-        printf("+ Processing [%s]\n", folder_path.c_str());
-    }
-
-    for (directory_iterator itr(data_path); itr != directory_iterator(); ++itr) {
-        // display filename only
-        cout << itr->path().filename() << ' ';
-        if (is_regular_file(itr->status()))
-            cout << " [" << file_size(itr->path()) << ']';
-
-        cout << '\n';
-    }
-	*/
-}
+#endif

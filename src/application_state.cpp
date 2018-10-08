@@ -20,60 +20,24 @@
                             `-+shdNMMMMMMMNmdyo/.
                                     `````*/
 //#############################################################################
-// Pipeline to process our PointCloud data
+// Application global state
 //#############################################################################
-//
-// See er-pipeline.h to get more information on the functionality and structure
-//
-
-#include "er-pipeline.h"
-
-//-----------------------------------------------------------------------------
-// STD
-//-----------------------------------------------------------------------------
 
 #include <string>
-using namespace std;
 
-//-----------------------------------------------------------------------------
-// BOOST System
-//-----------------------------------------------------------------------------
+#include "application_state.h"
 
-#include <boost/filesystem.hpp>
-using namespace boost::filesystem;
-
-
-er::pipeline::pipeline()
+er::app_state::app_state()
 {
     printf("+ Initialize pipeline\n");
 }
 
-er::pipeline::~pipeline()
+er::app_state::~app_state()
 {
 
 }
 
-void er::pipeline::initialize_folder(std::string folder_path)
+void er::app_state::load_configuration (std::string json_config)
 {
-	/*
-    path data_path(folder_path);
-    if (!is_directory(data_path)) {
-        data_path = data_path.parent_path();
 
-        if (!is_directory(data_path)) {
-            printf("! Error: Not a directory [%s]\n", folder_path.c_str());
-        }
-    } else {
-        printf("+ Processing [%s]\n", folder_path.c_str());
-    }
-
-    for (directory_iterator itr(data_path); itr != directory_iterator(); ++itr) {
-        // display filename only
-        cout << itr->path().filename() << ' ';
-        if (is_regular_file(itr->status()))
-            cout << " [" << file_size(itr->path()) << ']';
-
-        cout << '\n';
-    }
-	*/
 }

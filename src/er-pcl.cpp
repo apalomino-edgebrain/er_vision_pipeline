@@ -26,16 +26,26 @@
 // and video
 //#############################################################################
 
-//#include <igl/cotmatrix.h>
-//#include <igl/readOFF.h>
-//#include <igl/opengl/glfw/Viewer.h>
-
 #include "er-pipeline.h"
+
+//-----------------------------------------------------------------------------
+// UI DRAWING
+//-----------------------------------------------------------------------------
+
+#define GLFW_INCLUDE_GLU
+#include <GLFW/glfw3.h>
+
+#ifdef REALSENSE_USE_IMGUI
+#include <imgui.h>
+#include "examples\opengl2_example\imgui_impl_glfw_gl2.h"
+#endif
 
 #include <pcl/kdtree/kdtree_flann.h>
 
 #include "process_3d.h"
 #include "window_control.h"
+
+#include "application_state.h"
 
 // Libigl integration test
 void launch_visualizer();
@@ -362,7 +372,12 @@ int main(int argc, char * argv[]) try {
 
     // Create a simple OpenGL window for rendering:
     window app(1280, 720, "Earth Rover PCL Pipeline");
-    ImGui_ImplGlfw_Init(app, false);
+
+#ifdef REALSENSE_USE_IMGUI
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void) io;
+	ImGui_ImplGlfwGL2_Init(app, true);
+#endif
 
     // Construct an object to manage view state
     state app_state;
@@ -396,69 +411,22 @@ int main(int argc, char * argv[]) try {
 
     pointcloud pc2;
 
-    bool show_app = true;
-
-    bool show_analysis = true;
-
-    bool show_ground = true;
-    bool show_plants = true;
-
-    bool bool_cloud_raw = false;
-    bool bool_color_cluster = false;
-    bool bool_distance_filter = true;
-    bool bool_voxel_process = false;
-
-    bool bool_tint_nvdi = true;
-    bool bool_tint_ir = true;
-
-    float min_nvdi = 1;
-    float cur_nvdi = -1;
-    float max_nvdi = -1;
-
-    float min_ir = 0;
-    float cur_ir = 0;
-    float max_ir = 1;
-
-    float cur_max_clip[3] = { 0, 10, 10 };
-    float cur_min_clip[3] = { 0, 0, 0 };
-
-    float min_clip[3] = { 0, 0, 50 };
-    float max_clip[3] = { 0, 50, -50 };
-
-    ImGui::SetNextWindowSize({ 300, 100 });
-
     er::pipeline er_pipe;
 
     if (read_file)
         er_pipe.initialize_folder(file_record);
 
-/*
-    // Application state shared between the main-thread and GLFW events
-    struct state
-    {
-        bool mouse_down = false;
-        toggle ruler_start;
-        toggle ruler_end;
-    };
-*/
-    bool playing_state = true;
-    bool playing = true;
-
-    bool bool_extract_plants = false;
+	bool playing_state = true;
 
     while (app) // Application still alive?
     {
-        static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
-
-        ImGui_ImplGlfw_NewFrame(1);
-
         // Wait for the next set of frames from the camera
         rs2::playback playback = device.as<rs2::playback>();
 
-        if (playing_state != playing) {
+        if (playing_state != er::app_state::get().playing) {
             playback.resume();
-            playing_state = playing;
-            if (playing) {
+            playing_state = !playing_state;
+            if (playing_state) {
                 printf_h2("Playing");
                 playback.resume();
             } else {
@@ -513,18 +481,18 @@ int main(int argc, char * argv[]) try {
 
                     //-- Z Clipping max and min values--
 
-                    if (p.z > max_clip[2])
-                        max_clip[2] = p.z;
+                    if (p.z > er::app_state::get().max_clip[2])
+						er::app_state::get().max_clip[2] = p.z;
 
-                    if (p.z < min_clip[2])
-                        min_clip[2] = p.z;
+                    if (p.z < er::app_state::get().min_clip[2])
+						er::app_state::get().min_clip[2] = p.z;
 
                     //-- Y Clipping max and min values--
-                    if (p.y > max_clip[1])
-                        max_clip[1] = p.y;
+                    if (p.y > er::app_state::get().max_clip[1])
+						er::app_state::get().max_clip[1] = p.y;
 
-                    if (p.y < min_clip[1])
-                        min_clip[1] = p.y;
+                    if (p.y < er::app_state::get().min_clip[1])
+						er::app_state::get().min_clip[1] = p.y;
 
                     get_texinfrared(&infrared, tex_coords[i].u, tex_coords[i].v, p.a);
                     p.r = p.g = p.b = p.a;
@@ -557,32 +525,32 @@ int main(int argc, char * argv[]) try {
 
                         float nvdi = float(p.a - p.r) / (p.a + p.r);
 
-                        if (show_ground && show_plants) {
+                        if (er::app_state::get().show_ground && er::app_state::get().show_plants) {
                         } else {
-                            if (show_ground) {
-                                if (nvdi > cur_nvdi) {
+                            if (er::app_state::get().show_ground) {
+                                if (nvdi > er::app_state::get().cur_nvdi) {
                                     p.r = p.g = p.b = 0;
                                     p.z = 0;
                                     add_point = false;
                                 }
 
-                                if (p.a < (cur_ir * 255.f)) {
+                                if (p.a < (er::app_state::get().cur_ir * 255.f)) {
                                     p.g = p.b = 0;
                                     p.r = p.a;
                                 }
                             }
 
-                            if (show_plants) {
-                                if (nvdi < cur_nvdi) {
-                                    if (bool_tint_nvdi) {
+                            if (er::app_state::get().show_plants) {
+                                if (nvdi < er::app_state::get().cur_nvdi) {
+                                    if (er::app_state::get().bool_tint_nvdi) {
                                         p.g = p.b = 0;
                                         p.r = p.a;
                                     } else {
                                         add_point = false;
                                     }
                                 } else {
-                                    if (p.a < (cur_ir * 255.f)) {
-                                        if (bool_tint_ir) {
+                                    if (p.a < (er::app_state::get().cur_ir * 255.f)) {
+                                        if (er::app_state::get().bool_tint_ir) {
                                             p.g = p.r = 0;
                                             p.b = p.a;
                                         } else {
@@ -593,11 +561,11 @@ int main(int argc, char * argv[]) try {
                             }
                         }
 
-                        if (nvdi < min_nvdi)
-                            min_nvdi = nvdi;
+                        if (nvdi < er::app_state::get().min_nvdi)
+							er::app_state::get().min_nvdi = nvdi;
 
-                        if (nvdi > max_nvdi)
-                            max_nvdi = nvdi;
+                        if (nvdi > er::app_state::get().max_nvdi)
+							er::app_state::get().max_nvdi = nvdi;
 
                     }
 
@@ -608,6 +576,9 @@ int main(int argc, char * argv[]) try {
                     ptr++;
                 }
 
+				//--------------- Push cloud ----------------------------
+
+				push_cloud(cloud);
             }
 
             //rs2_frame* frame = rs2_extract_frame(frames, i, &e);
@@ -618,12 +589,12 @@ int main(int argc, char * argv[]) try {
             // Create the normal estimation class, and pass the input dataset to it
 
             //------------- Filter limit ------------------------
-            if (bool_distance_filter) {
+            if (er::app_state::get().bool_distance_filter) {
                 pcl_ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZRGBA>);
                 pcl::PassThrough<pcl::PointXYZRGBA> pass;
                 pass.setInputCloud(cloud);
                 pass.setFilterFieldName("z");
-                pass.setFilterLimits(cur_min_clip[2], cur_max_clip[2]);
+                pass.setFilterLimits(er::app_state::get().cur_min_clip[2], er::app_state::get().cur_max_clip[2]);
 
                 //pass.setFilterFieldName("y");
                 //pass.setFilterLimits(cur_min_clip[1], cur_max_clip[1]);
@@ -643,7 +614,7 @@ int main(int argc, char * argv[]) try {
                 ne.compute(*cloud_normals);
                 */
             } else
-                if (bool_cloud_raw) {
+                if (er::app_state::get().bool_cloud_raw) {
                     layers.push_back(cloud);
                 }
 
@@ -655,13 +626,13 @@ int main(int argc, char * argv[]) try {
             sor.setLeafSize(0.1f, 0.1f, 0.1f);
             sor.filter(*cloud_voxel);
 
-            if (bool_voxel_process) {
+            if (er::app_state::get().bool_voxel_process) {
                 layers.push_back(cloud_voxel);
             }
 
             //------------- COLOR Cluster ------------------------
 
-            if (bool_color_cluster && cloud->points.size() > 0) {
+            if (er::app_state::get().bool_color_cluster && cloud->points.size() > 0) {
 
                 pcl::search::Search <pcl::PointXYZRGBA>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZRGBA> >(new pcl::search::KdTree<pcl::PointXYZRGBA>);
                 pcl::IndicesPtr indices(new std::vector <int>);
@@ -709,7 +680,7 @@ int main(int argc, char * argv[]) try {
             //pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
             //pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
 
-            if (bool_extract_plants) {
+            if (er::app_state::get().bool_extract_plants) {
                 extract_plants(cloud);
             }
         }
@@ -731,6 +702,12 @@ int main(int argc, char * argv[]) try {
 
         draw_pointcloud(app, app_state, layers);
         //draw_polygons(app, app_state);
+
+#ifdef REALSENSE_USE_IMGUI
+		static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
+		ImGui_ImplGlfwGL2_NewFrame();
+
+		ImGui::SetNextWindowSize({ 300, 100 });
 
         {
             ImGui::Begin("app", nullptr, flags);
@@ -774,11 +751,11 @@ int main(int argc, char * argv[]) try {
             ImGui::Text("Raw %d", cloud_raw->points.size());
             ImGui::Text("Process %d", cloud->points.size());
 
-
             ImGui::End();
         }
 
         ImGui::Render();
+#endif
     }
 
     return EXIT_SUCCESS;
