@@ -107,7 +107,7 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 		static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
 		{
 			ImGuiIO& io = ImGui::GetIO();
-			ImGui::GetIO().IniFilename = "interface.ini";
+			//ImGui::GetIO().IniFilename = "interface.ini";
 
 			ImGui::Begin("app", nullptr, flags);
 			ImGui::Text("Color Spaces");
