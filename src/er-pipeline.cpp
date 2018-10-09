@@ -55,7 +55,6 @@ er::pipeline::~pipeline()
 
 void er::pipeline::initialize_folder(std::string folder_path)
 {
-	/*
     path data_path(folder_path);
     if (!is_directory(data_path)) {
         data_path = data_path.parent_path();
@@ -75,5 +74,4 @@ void er::pipeline::initialize_folder(std::string folder_path)
 
         cout << '\n';
     }
-	*/
 }

@@ -73,6 +73,7 @@ namespace er {
 	class worker_t
 	{
 	public:
+		bool initialized = false;
 		boost::thread *bthread;
 
 	private:

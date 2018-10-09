@@ -43,7 +43,7 @@ er::FrameData::FrameData()
 {
 	idx = 0;
 	initialized = false;
-	invalidate = true;
+	invalidate = false;
 	cloud = pcl_ptr(new pcl::PointCloud<pcl::PointXYZRGBA>);
 }
 
@@ -107,6 +107,9 @@ void er::worker_t::add_axis()
 
 void er::worker_t::compute_cloud()
 {
+	if (!initialized)
+		return;
+
 	if (!data.invalidate)
 		return;
 
@@ -115,7 +118,7 @@ void er::worker_t::compute_cloud()
 
 	printf("Compute cloud %zd\n", size); \
 
-		V.resize(size, 3);
+	V.resize(size, 3);
 	C.resize(size, 3);
 
 	int i = 0;
@@ -136,20 +139,20 @@ void er::worker_t::compute_cloud()
 	radius.setConstant(er::app_state::get().point_scale * viewer.core.camera_base_zoom);
 
 	viewer.data().set_points(V, C, radius);
-
-	add_axis();
 }
 
 void er::worker_t::start()
 {
-	std::random_device rd;
-	std::mt19937 e2(rd());
-	std::uniform_real_distribution<> dist(0, 1);
+	printf("Start thread\n");
 
-	// Load a mesh in OFF format
-	igl::readOFF("S:/libigl/tutorial/shared/bunny.off", V, F);
+	// Load an example mesh in OFF format
+	// Just to check that we are have a functional libIGL.
 
-	printf("Start thread %d", n_);
+	// TODO: This thread will crash if the window is not created on time.
+	boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+
+	//------------------------------------------------------------
+	igl::readOFF("S:/libigl/tutorial/shared/grid.off", V, F);
 
 	Eigen::VectorXd radius(V.rows());
 	radius.setConstant(0.01 * viewer.core.camera_base_zoom);
@@ -157,22 +160,19 @@ void er::worker_t::start()
 	Eigen::VectorXd Z = V.col(2);
 	igl::jet(Z, true, C);
 
-	for (int i = 0; i < C.rows(); i++) {
-		C(i, 0) = 0; // dist(e2);
-		C(i, 1) = 0;
-		C(i, 2) = 1;
-	}
-
 	viewer.data().set_points(V, C, radius);
 
-	printf("- BIND -\n");
+	initialize_visualizer_ui(viewer);
 
+	add_axis();
+	viewer.append_mesh();
+
+	// Thread were we check to see if we have to invalidate the pointcloud
 	viewer.callback_post_draw = [&] (auto viewer) {
+		initialized = true;
 		compute_cloud();
 		return false;
 	};
-
-	initialize_visualizer_ui(viewer);
 
 	viewer.launch();
 }
