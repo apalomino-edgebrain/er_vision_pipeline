@@ -28,27 +28,27 @@
 
 #include "er-pipeline.h"
 
+#define GLFW_INCLUDE_GLU
+#include <GLFW/glfw3.h>
+
 //-----------------------------------------------------------------------------
 // UI DRAWING
 //-----------------------------------------------------------------------------
-
-#define GLFW_INCLUDE_GLU
-#include <GLFW/glfw3.h>
 
 #ifdef REALSENSE_USE_IMGUI
 #include <imgui.h>
 #include "examples\opengl2_example\imgui_impl_glfw_gl2.h"
 #endif
 
+#include "window_control.h"
+
+#include "visualizer.h"
+
 #include <pcl/kdtree/kdtree_flann.h>
 
 #include "process_3d.h"
-#include "window_control.h"
 
 #include "application_state.h"
-
-// Libigl integration test
-void launch_visualizer();
 
 // Registers the state variable and callbacks to allow mouse control of the pointcloud
 void register_glfw_callbacks(window& app, state& app_state)
@@ -336,9 +336,6 @@ void extract_plants(pcl_ptr cloud)
     }
 }
 
-// Simplified push cloud.
-void push_cloud(pcl_ptr cloud);
-
 int main(int argc, char * argv[]) try {
 
 #ifdef WIN32
@@ -368,7 +365,7 @@ int main(int argc, char * argv[]) try {
     }
 
 	Eigen::initParallel();
-	launch_visualizer();
+	er::worker_t *worker = launch_visualizer();
 
     // Create a simple OpenGL window for rendering:
     window app(1280, 720, "Earth Rover PCL Pipeline");
@@ -578,7 +575,7 @@ int main(int argc, char * argv[]) try {
 
 				//--------------- Push cloud ----------------------------
 
-				push_cloud(cloud);
+				worker->push_cloud(cloud);
             }
 
             //rs2_frame* frame = rs2_extract_frame(frames, i, &e);

@@ -24,37 +24,7 @@
 //#############################################################################
 
 #include "visualizer.h"
-
-class FrameData : public boost::basic_lockable_adapter<boost::mutex>
-{
-public:
-	bool initialized;
-	uint32_t time_t;
-
-	boost::mutex mtx;
-
-	volatile uint8_t idx;
-	volatile bool invalidate;
-
-	pcl_ptr cloud;
-
-	FrameData()
-	{
-		idx = 0;
-		initialized = false;
-		invalidate = true;
-		cloud = pcl_ptr(new pcl::PointCloud<pcl::PointXYZRGBA>);
-	}
-
-	void invalidate_cloud(pcl_ptr cloud_)
-	{
-		boost::lock_guard<FrameData> guard(*this);
-		invalidate = true;
-		pcl::copyPointCloud(*cloud_, *cloud);
-	}
-};
-
-FrameData data;
+#include "visualizer_ui.h"
 
 // Static opengl window where we render our results on libigl
 igl::opengl::glfw::Viewer viewer;
@@ -65,18 +35,28 @@ igl::opengl::glfw::Viewer viewer;
 
 er::worker_t viewer_thread;
 
-// Lock the data access when we push the cloud.
-// On this thread we will copy as fast as we can the pcl frame
-// and return.
-void push_cloud(pcl_ptr cloud)
+//#############################################################################
+// Pushed point cloud from the realsense Thread
+//#############################################################################
+
+er::FrameData::FrameData()
 {
-	data.invalidate_cloud(cloud);
+	idx = 0;
+	initialized = false;
+	invalidate = true;
+	cloud = pcl_ptr(new pcl::PointCloud<pcl::PointXYZRGBA>);
 }
 
-
-void er::worker_t::setup(size_t n)
+void er::FrameData::invalidate_cloud(pcl_ptr cloud_)
 {
-	n_ = static_cast<int>(n);
+	boost::lock_guard<FrameData> guard(*this);
+	invalidate = true;
+	pcl::copyPointCloud(*cloud_, *cloud);
+}
+
+void er::worker_t::setup()
+{
+	bthread = new boost::thread(boost::bind(&er::worker_t::start, this));
 }
 
 void er::worker_t::add_axis()
@@ -125,7 +105,7 @@ void er::worker_t::add_axis()
 	viewer.data().add_label(centre, "centre");
 }
 
-void er::worker_t::compute_cloud(igl::opengl::glfw::Viewer &viewer)
+void er::worker_t::compute_cloud()
 {
 	if (!data.invalidate)
 		return;
@@ -160,7 +140,7 @@ void er::worker_t::compute_cloud(igl::opengl::glfw::Viewer &viewer)
 	add_axis();
 }
 
-void er::worker_t::start(int n)
+void er::worker_t::start()
 {
 	std::random_device rd;
 	std::mt19937 e2(rd());
@@ -188,7 +168,7 @@ void er::worker_t::start(int n)
 	printf("- BIND -\n");
 
 	viewer.callback_post_draw = [&] (auto viewer) {
-		compute_cloud(viewer);
+		compute_cloud();
 		return false;
 	};
 
@@ -197,14 +177,16 @@ void er::worker_t::start(int n)
 	viewer.launch();
 }
 
-void er::worker_t::operator()()
+// Lock the data access when we push the cloud.
+// On this thread we will copy as fast as we can the pcl frame
+// and return.
+void er::worker_t::push_cloud(pcl_ptr cloud)
 {
-	start(n_);
+	data.invalidate_cloud(cloud);
 }
 
-void launch_visualizer()
+er::worker_t *launch_visualizer()
 {
-	viewer_thread.setup(0);
-	viewer_thread.bthread = new boost::thread(viewer_thread);
-	//viewer_thread.bthread->join();
+	viewer_thread.setup();
+	return &viewer_thread;
 }
