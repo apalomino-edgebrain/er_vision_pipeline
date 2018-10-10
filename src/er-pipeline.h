@@ -61,6 +61,13 @@
 #include <stdlib.h>
 #include <string>
 
+#include <boost/thread.hpp>
+#include <boost/chrono.hpp>
+#include <boost/thread/lockable_adapter.hpp>
+#include <mutex>
+#include <iostream>
+#include <random>
+
 //-----------------------------------------------------------------------------
 // LIBREALSENSE
 //-----------------------------------------------------------------------------
@@ -79,6 +86,9 @@
 //-----------------------------------------------------------------------------
 // PCL System
 //-----------------------------------------------------------------------------
+
+#include <pcl/point_cloud.h>
+#include <pcl/common/io.h>
 
 #include <pcl/point_types.h>
 
@@ -118,6 +128,39 @@ using pcl_ptr = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr;
 #include "process_3d.h"
 
 namespace er {
+	// Lockable object that contains our raw point cloud
+	class frame_data : public boost::basic_lockable_adapter<boost::mutex>
+	{
+	public:
+		bool initialized;
+		uint32_t time_t;
+
+		boost::mutex mtx;
+
+		volatile uint8_t idx;
+		volatile bool invalidate;
+
+		pcl_ptr cloud;
+
+		frame_data();
+
+		void invalidate_cloud(pcl_ptr cloud_);
+	};
+
+	// We have filters on the system that accept point clouds and outputs
+	// results.
+	//
+	// The filters create a tree of dependencies and can be multithreaded.
+	class filter
+	{
+	public:
+		filter();
+		~filter();
+
+		void input(pcl_ptr cloud);
+		pcl_ptr output();
+	};
+
     class pipeline
     {
     public:
@@ -129,6 +172,7 @@ namespace er {
         // in memory.
         void initialize_folder(std::string folder_path);
 
+		void process_frame(pcl_ptr cloud);
     };
 }
 

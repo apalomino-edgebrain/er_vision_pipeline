@@ -28,20 +28,6 @@
 #ifndef VISUALIZER3D_H_
 #define VISUALIZER3D_H_
 
-#include <boost/thread.hpp>
-#include <boost/chrono.hpp>
-#include <boost/thread/lockable_adapter.hpp>
-#include <mutex>
-#include <iostream>
-#include <random>
-
-#include <stdio.h>
-
-// PCL
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/common/io.h>
-
 #include "er-pipeline.h"
 
 #include "application_state.h"
@@ -50,26 +36,6 @@
 // Thread and helpers to render the cloud after processing.
 
 namespace er {
-
-	// Lockable object that contains our raw point cloud
-	class FrameData : public boost::basic_lockable_adapter<boost::mutex>
-	{
-	public:
-		bool initialized;
-		uint32_t time_t;
-
-		boost::mutex mtx;
-
-		volatile uint8_t idx;
-		volatile bool invalidate;
-
-		pcl_ptr cloud;
-
-		FrameData();
-
-		void invalidate_cloud(pcl_ptr cloud_);
-	};
-
 	class worker_t
 	{
 	public:
@@ -77,7 +43,7 @@ namespace er {
 		boost::thread *bthread;
 
 	private:
-		FrameData data;
+		frame_data data;
 
 		int    n_;
 		Eigen::MatrixXd V;

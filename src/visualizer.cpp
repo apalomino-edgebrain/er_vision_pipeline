@@ -39,7 +39,7 @@ er::worker_t viewer_thread;
 // Pushed point cloud from the realsense Thread
 //#############################################################################
 
-er::FrameData::FrameData()
+er::frame_data::frame_data()
 {
 	idx = 0;
 	initialized = false;
@@ -47,9 +47,9 @@ er::FrameData::FrameData()
 	cloud = pcl_ptr(new pcl::PointCloud<pcl::PointXYZRGBA>);
 }
 
-void er::FrameData::invalidate_cloud(pcl_ptr cloud_)
+void er::frame_data::invalidate_cloud(pcl_ptr cloud_)
 {
-	boost::lock_guard<FrameData> guard(*this);
+	boost::lock_guard<frame_data> guard(*this);
 	invalidate = true;
 	pcl::copyPointCloud(*cloud_, *cloud);
 }
@@ -80,17 +80,6 @@ void er::worker_t::add_axis()
 	// Plot the corners of the bounding box as points
 	viewer.data().add_points(V_axis, Eigen::RowVector3d(1, 0, 0), radius);
 
-	// Plot the edges of the bounding box
-	/*
-	for (unsigned i = 0; i<E_axis.rows(); ++i)
-		viewer.data().add_edges
-		(
-			V_axis.row(E_axis(i, 0)),
-			V_axis.row(E_axis(i, 1)),
-			Eigen::RowVector3d(1, 0, 0)
-		);
-	*/
-
 	// Plot labels with the coordinates of bounding box vertices
 	Eigen::Vector3d x(1, 0, 0);
 	viewer.data().add_label(x, "x");
@@ -113,7 +102,7 @@ void er::worker_t::compute_cloud()
 	if (!data.invalidate)
 		return;
 
-	boost::lock_guard<FrameData> guard(data);
+	boost::lock_guard<frame_data> guard(data);
 	size_t size = data.cloud->points.size();
 
 	printf("Compute cloud %zd\n", size); \
@@ -126,7 +115,7 @@ void er::worker_t::compute_cloud()
 
 		//printf(" %2.2f, %2.2f, %2.2f ", p.x, p.y, p.z);
 		V(i, 0) = p.x;
-		V(i, 1) = p.y;
+		V(i, 1) = -p.y;
 		V(i, 2) = p.z;
 
 		C(i, 0) = p.r / 255.f;
@@ -167,9 +156,20 @@ void er::worker_t::start()
 	add_axis();
 	viewer.append_mesh();
 
+	viewer.callback_init = [&] (auto viewer_) {
+		printf("Setting up camera!\n");
+
+		// Position the camera in our reference frame
+		viewer.core.camera_eye = Eigen::Vector3f( 0, 0, -2.5f);
+
+		return false;
+	};
+
 	// Thread were we check to see if we have to invalidate the pointcloud
 	viewer.callback_post_draw = [&] (auto viewer) {
 		initialized = true;
+
+		// Position the camera in our reference frame
 		compute_cloud();
 		return false;
 	};

@@ -75,3 +75,8 @@ void er::pipeline::initialize_folder(std::string folder_path)
         cout << '\n';
     }
 }
+
+void er::pipeline::process_frame(pcl_ptr cloud)
+{
+
+}

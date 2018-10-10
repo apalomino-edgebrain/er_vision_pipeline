@@ -575,14 +575,14 @@ int main(int argc, char * argv[]) try {
 				}
 
 				//--------------- Push cloud ----------------------------
-				worker->push_cloud(cloud);
+				if (!er::app_state::get().bool_color_cluster)
+					worker->push_cloud(cloud);
 			}
 
-			//rs2_frame* frame = rs2_extract_frame(frames, i, &e);
-			//float dist_to_center = rs2_depth_frame_get_distance(frame, width / 2, height / 2, &e);
+			// rs2_frame* frame = rs2_extract_frame(frames, i, &e);
+			// float dist_to_center = rs2_depth_frame_get_distance(frame, width / 2, height / 2, &e);
 
 			//----------- Normal computation ----------------------
-
 			// Create the normal estimation class, and pass the input dataset to it
 
 			//------------- Filter limit ------------------------
@@ -653,12 +653,14 @@ int main(int argc, char * argv[]) try {
 				reg.extract(clusters);
 
 				pcl::PointCloud <pcl::PointXYZRGBA>::Ptr colored_cloud = reg.getColoredCloudRGBA();
-				if (colored_cloud)
+				if (colored_cloud) {
 					layers.push_back(colored_cloud);
+					worker->push_cloud(colored_cloud);
+				}
 			}
 
-			/*
-			// Normal estimation*
+/*
+			// Normal estimation
 			pcl::NormalEstimation<pcl::PointXYZRGBA, pcl::Normal> ne;
 			ne.setInputCloud(cloud);
 			pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>());
@@ -669,7 +671,7 @@ int main(int argc, char * argv[]) try {
 			pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
 			//ne.setRadiusSearch(0.3);
 			ne.compute(*cloud_normals);
-			*/
+*/
 
 			//* normals should not contain the point normals + surface curvatures
 
