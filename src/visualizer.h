@@ -32,6 +32,8 @@
 
 #include "application_state.h"
 
+struct plane;
+
 //-----------------------------------------------------------------------------
 // Thread and helpers to render the cloud after processing.
 
@@ -59,6 +61,9 @@ namespace er {
 		// we will have to add some geometry with the ground plane and the axis
 
 		void add_axis();
+
+		// Converts the PCL cloud into a libIGL compatible mesh
+		void show_plane(plane &p);
 
 		// Converts the PCL cloud into a libIGL compatible mesh
 		void compute_cloud();

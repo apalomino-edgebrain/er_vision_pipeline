@@ -26,6 +26,10 @@
 #include "visualizer.h"
 #include "visualizer_ui.h"
 
+#include <igl/fit_plane.h>
+
+#include "algebra/plane.h"
+
 // Static opengl window where we render our results on libigl
 igl::opengl::glfw::Viewer viewer;
 
@@ -94,6 +98,12 @@ void er::worker_t::add_axis()
 	viewer.data().add_label(centre, "centre");
 }
 
+void er::worker_t::show_plane(plane &p)
+{
+
+}
+
+
 void er::worker_t::compute_cloud()
 {
 	if (!initialized)
@@ -105,7 +115,9 @@ void er::worker_t::compute_cloud()
 	boost::lock_guard<frame_data> guard(data);
 	size_t size = data.cloud->points.size();
 
-	printf("Compute cloud %zd\n", size); \
+	viewer.data().clear();
+
+	printf("Compute cloud %zd\n", size);
 
 	V.resize(size, 3);
 	C.resize(size, 3);
@@ -128,6 +140,24 @@ void er::worker_t::compute_cloud()
 	radius.setConstant(er::app_state::get().point_scale * viewer.core.camera_base_zoom);
 
 	viewer.data().set_points(V, C, radius);
+
+	//-------------------------------------------------------------------------
+	// Plane fitting
+
+
+	Eigen::RowVector3d N;
+	Eigen::RowVector3d cp;
+
+	igl::fit_plane(V, N, cp);
+
+	// Plane
+	// Ax + By + Cz = D;
+
+	float constantD = -N.dot(cp);
+
+	viewer.data().add_label(cp, "Center Plane");
+
+	Eigen::MatrixXd V_axis(4, 3);
 }
 
 void er::worker_t::start()
@@ -160,7 +190,7 @@ void er::worker_t::start()
 		printf("Setting up camera!\n");
 
 		// Position the camera in our reference frame
-		viewer.core.camera_eye = Eigen::Vector3f( 0, 0, -2.5f);
+		viewer.core.camera_eye = Eigen::Vector3f(0, 0, -2.5f);
 
 		return false;
 	};
