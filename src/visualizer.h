@@ -52,6 +52,12 @@ namespace er {
 		Eigen::MatrixXi F;
 		Eigen::MatrixXd C;
 
+		uint32_t id_axis = -1;
+		uint32_t id_plane = -1;
+		uint32_t id_mesh = -1;
+
+		er::pipeline pipeline;
+
 	public:
 		// Launches the visualizer, creates a window and returns.
 		void setup();
@@ -62,8 +68,10 @@ namespace er {
 
 		void add_axis();
 
+		void test_cube();
+
 		// Converts the PCL cloud into a libIGL compatible mesh
-		void show_plane(plane &p);
+		void show_plane(plane &p, Eigen::Vector3d &m, Eigen::Vector3d M);
 
 		// Converts the PCL cloud into a libIGL compatible mesh
 		void compute_cloud();

@@ -567,7 +567,7 @@ int main(int argc, char * argv[]) try {
 
 					}
 
-					if (add_point)
+					if (add_point && p.z >= 0.1f)
 						cloud->points.push_back(p);
 
 					i++;

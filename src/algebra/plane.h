@@ -29,6 +29,9 @@ struct plane
 	plane(float _a, float _b, float _c, float _d);
 	plane(const Eigen::Vector3d &NormalizedNormal, float _d);
 
+	// Returns the y point for an X and z
+	float get_y(float x, float z);
+
 	//
 	// Static constructors
 	//

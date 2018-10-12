@@ -63,6 +63,11 @@ plane::plane()
 
 }
 
+float plane::get_y(float x, float z)
+{
+	return -(a*x + c*z + d) / b;
+}
+
 plane::plane(const plane &P)
 {
 	a = P.a;

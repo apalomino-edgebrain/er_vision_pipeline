@@ -96,13 +96,68 @@ void er::worker_t::add_axis()
 
 	Eigen::Vector3d centre(0, 0, 0);
 	viewer.data().add_label(centre, "centre");
+
+	id_axis = viewer.data().id;
+	viewer.append_mesh();
 }
 
-void er::worker_t::show_plane(plane &p)
+void er::worker_t::test_cube()
 {
+	Eigen::MatrixXd V(8, 3);
+	V <<
+		0.0, 0.0, 0.0,
+		0.0, 0.0, 1.0,
+		0.0, 1.0, 0.0,
+		0.0, 1.0, 1.0,
+		1.0, 0.0, 0.0,
+		1.0, 0.0, 1.0,
+		1.0, 1.0, 0.0,
+		1.0, 1.0, 1.0;
+	Eigen::MatrixXi F(12, 3);
+	F <<
+		0, 6, 4,
+		0, 2, 6,
+		0, 3, 2,
+		0, 1, 3,
+		2, 7, 6,
+		2, 3, 7,
+		4, 6, 7,
+		4, 7, 5,
+		0, 4, 5,
+		0, 5, 1,
+		1, 5, 7,
+		1, 7, 3;
 
+	viewer.data().set_mesh(V, F);
+	viewer.append_mesh();
 }
 
+#define W 2
+#define H 10
+
+void er::worker_t::show_plane(plane &p, Eigen::Vector3d &m, Eigen::Vector3d M)
+{
+	Eigen::MatrixXd V(4, 3);
+	V <<
+		m(0), p.get_y(m(0), m(2)), m(2),
+		M(0), p.get_y(M(0), m(2)), m(2),
+		m(0), p.get_y(m(0), M(2)), M(2),
+		M(0), p.get_y(M(0), M(2)), M(2);
+
+	Eigen::MatrixXi F(2, 3);
+	F <<
+		0, 1, 2,
+		1, 2, 3;
+
+	Eigen::VectorXd Z = V.col(2);
+	igl::jet(Z, true, C);
+
+	viewer.data().set_mesh(V, F);
+	viewer.data().set_colors(C);
+
+	id_plane = viewer.data().id;
+	viewer.append_mesh();
+}
 
 void er::worker_t::compute_cloud()
 {
@@ -114,8 +169,9 @@ void er::worker_t::compute_cloud()
 
 	boost::lock_guard<frame_data> guard(data);
 	size_t size = data.cloud->points.size();
-
 	viewer.data().clear();
+	if (size == 0)
+		return;
 
 	printf("Compute cloud %zd\n", size);
 
@@ -136,28 +192,99 @@ void er::worker_t::compute_cloud()
 		i++;
 	}
 
+	while (viewer.erase_mesh(viewer.selected_data_index)) {};
+	viewer.data().clear();
+
 	Eigen::VectorXd radius(size);
-	radius.setConstant(er::app_state::get().point_scale * viewer.core.camera_base_zoom);
+	// * viewer.core.camera_base_zoom
+	radius.setConstant(er::app_state::get().point_scale);
 
 	viewer.data().set_points(V, C, radius);
+	id_mesh = viewer.data().id;
+
+	viewer.append_mesh();
+
+	//-------------------------------------------------------------------------
+	// Find the bounding box
+	Eigen::Vector3d m = V.colwise().minCoeff();
+	Eigen::Vector3d M = V.colwise().maxCoeff();
+
+	// Corners of the bounding box
+	Eigen::MatrixXd V_box(8, 3);
+	V_box <<
+		m(0), m(1), m(2),
+		M(0), m(1), m(2),
+		M(0), M(1), m(2),
+		m(0), M(1), m(2),
+		m(0), m(1), M(2),
+		M(0), m(1), M(2),
+		M(0), M(1), M(2),
+		m(0), M(1), M(2);
+
+	// Edges of the bounding box
+	Eigen::MatrixXi E_box(12, 2);
+	E_box <<
+		0, 1,
+		1, 2,
+		2, 3,
+		3, 0,
+		4, 5,
+		5, 6,
+		6, 7,
+		7, 4,
+		0, 4,
+		1, 5,
+		2, 6,
+		7, 3;
+
+	Eigen::VectorXd radius_(V_box.rows());
+	radius.setConstant(er::app_state::get().point_scale);
+
+	// Plot the corners of the bounding box as points
+	//viewer.data().add_points(V_box, Eigen::RowVector3d(1, 0, 0), radius_);
+	/*
+	// Plot the edges of the bounding box
+	for (unsigned i = 0; i<E_box.rows(); ++i)
+		viewer.data().add_edges
+		(
+			V_box.row(E_box(i, 0)),
+			V_box.row(E_box(i, 1)),
+			Eigen::RowVector3d(1, 0, 0)
+		);
+	*/
+
+	// Plot labels with the coordinates of bounding box vertices
+	std::stringstream l1;
+	l1 << m(0) << ", " << m(1) << ", " << m(2);
+	viewer.data().add_label(m, l1.str());
+	std::stringstream l2;
+	l2 << M(0) << ", " << M(1) << ", " << M(2);
+	viewer.data().add_label(M, l2.str());
+
+	viewer.append_mesh();
 
 	//-------------------------------------------------------------------------
 	// Plane fitting
+	if (er::app_state::get().show_ground_plane) {
 
+		Eigen::RowVector3d N;
+		Eigen::RowVector3d cp;
 
-	Eigen::RowVector3d N;
-	Eigen::RowVector3d cp;
+		igl::fit_plane(V, N, cp);
 
-	igl::fit_plane(V, N, cp);
+		// Plane
+		// Ax + By + Cz = D;
 
-	// Plane
-	// Ax + By + Cz = D;
+		float constantD = -N.dot(cp);
 
-	float constantD = -N.dot(cp);
+		viewer.data().add_label(cp, "Ground Centre");
 
-	viewer.data().add_label(cp, "Center Plane");
+		plane p = plane::fromPointNormal(cp, N);
 
-	Eigen::MatrixXd V_axis(4, 3);
+		show_plane(p, m, M);
+
+		Eigen::MatrixXd V_axis(4, 3);
+	}
 }
 
 void er::worker_t::start()
@@ -184,7 +311,6 @@ void er::worker_t::start()
 	initialize_visualizer_ui(viewer);
 
 	add_axis();
-	viewer.append_mesh();
 
 	viewer.callback_init = [&] (auto viewer_) {
 		printf("Setting up camera!\n");
@@ -212,6 +338,8 @@ void er::worker_t::start()
 // and return.
 void er::worker_t::push_cloud(pcl_ptr cloud)
 {
+	pipeline.process_frame(cloud);
+
 	data.invalidate_cloud(cloud);
 }
 

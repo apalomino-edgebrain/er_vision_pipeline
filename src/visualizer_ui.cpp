@@ -144,6 +144,7 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 			ImGui::Checkbox("Voxel Process", &er::app_state::get().bool_voxel_process);
 			ImGui::Checkbox("Distance Filter", &er::app_state::get().bool_distance_filter);
 
+			ImGui::Checkbox("Ground plane", &er::app_state::get().show_ground_plane);
 			ImGui::Checkbox("Show IR data", &er::app_state::get().show_ir_only_data);
 
 			ImGui::Separator();
