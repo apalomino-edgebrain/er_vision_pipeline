@@ -26,6 +26,10 @@
 #ifndef pipeline_H_
 #define pipeline_H_
 
+//#############################################################################
+// Pipeline Philosophy
+//
+// 1. Requirements
 //
 // Our pipeline is based on the input from a realsense data and the extra
 // metadata captured by our capturing system.
@@ -51,6 +55,24 @@
 //	 . Analyse
 //		Growth
 //		Health
+//
+// 2. Specifications
+//
+// The pipeline is a heavily multithreaded system with processing units.
+//
+// A processing unit is our minimum interface that is able to process an input.
+// Given that our different inputs are asynchronous, the processing unit has
+// to evaluate when all the requirements are met to generate a result.
+//
+// A processing unit can callback many units waiting for this result.
+// An example of this could be the HSV color space conversion which might be
+// required by several units.
+//
+// 3. System architecture
+//
+// Jobs can be spawned on the system with priorities, every unit should try
+// to block as less as possible the UI. Therefore the last process stage
+// is just a PCL dump into the visualizer or disk.
 //
 
 //-----------------------------------------------------------------------------
@@ -96,21 +118,18 @@
 #include "impl/region_growing_rgb.hpp"
 
 #include <pcl/filters/passthrough.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
 
 #include <pcl/ModelCoefficients.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/filters/voxel_grid.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/segmentation/extract_clusters.h>
-
-#include <pcl/filters/passthrough.h>
-
 #include <pcl/segmentation/region_growing_rgb.h>
 
 using pcl_ptr = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr;
@@ -127,15 +146,22 @@ using pcl_ptr = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr;
 
 #include "process_3d.h"
 
+#include <mutex>
+
 namespace er {
+	enum class frame_2d
+	{
+		color, ir, ir2, depth, region
+	};
+
 	// Lockable object that contains our raw point cloud
-	class frame_data : public boost::basic_lockable_adapter<boost::mutex>
+	class frame_data
 	{
 	public:
 		bool initialized;
 		uint32_t time_t;
 
-		boost::mutex mtx;
+		std::mutex mtx;
 
 		volatile uint8_t idx;
 		volatile bool invalidate;
@@ -147,23 +173,42 @@ namespace er {
 		void invalidate_cloud(pcl_ptr cloud_);
 	};
 
-	// We have filters on the system that accept point clouds and outputs
-	// results.
+	// We have process_units on the system that accept point clouds, images
+	// and metadata
 	//
-	// The filters create a tree of dependencies and can be multithreaded.
-	class filter
+	// This process unit is able to generate an output and callback a function
+	// with the result.
+	//
+	// The process_units can contain a tree of dependencies and can be multithreaded.
+	class process_unit
 	{
 	public:
-		filter();
-		~filter();
+		pcl_ptr cloud_in;
+		pcl_ptr cloud_out;
 
+		process_unit();
+		~process_unit();
+
+		void input(frame_2d type, void *color_frame);
 		void input(pcl_ptr cloud);
+
+		// Process the current process_unit and runs the algorithms
+		// Returns true if the process has finished so we call the callback
+		bool process();
+
+		// Callback function in case there is someone registered to it.
+		// This might end up being a vector of callbacks since we will
+		// have multiple processes waiting for this result.
+		std::function<void(pcl_ptr)> f_callback_output;
+
 		pcl_ptr output();
 	};
 
     class pipeline
     {
     public:
+		std::vector<process_unit *> process_units;
+
         pipeline();
         ~pipeline();
 
@@ -172,7 +217,12 @@ namespace er {
         // in memory.
         void initialize_folder(std::string folder_path);
 
-		void process_frame(pcl_ptr cloud);
+		// Load process_units
+		// process_units are algorithmic functions that are able to process point clouds
+		// asynchronously and can register to different inputs, either OpenCV, RGB, Sensor data, etc.
+		void preconfigure_process_units(std::string process_units_path);
+
+		void process_frame(pcl_ptr cloud, std::vector<frame_data *> &data_views);
     };
 }
 

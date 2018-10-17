@@ -45,7 +45,7 @@ namespace er {
 		boost::thread *bthread;
 
 	private:
-		frame_data data;
+		std::vector<frame_data *> data_views;
 
 		int    n_;
 		Eigen::MatrixXd V;

@@ -53,6 +53,11 @@ er::pipeline::~pipeline()
 
 }
 
+void er::pipeline::preconfigure_process_units(std::string process_units_path)
+{
+
+}
+
 void er::pipeline::initialize_folder(std::string folder_path)
 {
 	/*
@@ -78,7 +83,66 @@ void er::pipeline::initialize_folder(std::string folder_path)
 	*/
 }
 
-void er::pipeline::process_frame(pcl_ptr cloud)
+//-----------------------------------------------------------------------------
+// Main processing for our input frame
+//-----------------------------------------------------------------------------
+
+// We will also add the OpenCV images.
+
+// When we process a frame we get our cached frame data
+// We have different views over the data so we can display all kinds of intermediate
+// processed objects.
+
+void er::pipeline::process_frame(pcl_ptr cloud, std::vector<frame_data *> &data_views)
+{
+	if (data_views.size() == 0) {
+		frame_data *data = new frame_data();
+		data_views.push_back(data);
+	}
+
+	for (auto &frame : data_views) {
+		frame->invalidate_cloud(cloud);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// process_units system
+//-----------------------------------------------------------------------------
+
+er::process_unit::process_unit(): f_callback_output{nullptr}
 {
 
+}
+
+er::process_unit::~process_unit()
+{
+
+}
+
+void er::process_unit::input(frame_2d type, void *color_frame)
+{
+	// Check if the process was able to finish with this new information
+	if (!process()) {
+		return;
+	};
+}
+
+bool er::process_unit::process()
+{
+	return true;
+}
+
+void er::process_unit::input(pcl_ptr cloud)
+{
+	cloud_in = cloud;
+
+	// Check if the process was able to finish with this new information
+	if (!process()) {
+		return;
+	};
+}
+
+pcl_ptr er::process_unit::output()
+{
+	return nullptr;
 }

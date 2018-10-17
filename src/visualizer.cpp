@@ -53,7 +53,7 @@ er::frame_data::frame_data()
 
 void er::frame_data::invalidate_cloud(pcl_ptr cloud_)
 {
-	boost::lock_guard<frame_data> guard(*this);
+	std::lock_guard<std::mutex> lock(mtx);
 	invalidate = true;
 	pcl::copyPointCloud(*cloud_, *cloud);
 }
@@ -164,126 +164,128 @@ void er::worker_t::compute_cloud()
 	if (!initialized)
 		return;
 
-	if (!data.invalidate)
-		return;
+	for (auto &data : data_views) {
+		if (!data->invalidate)
+			return;
 
-	boost::lock_guard<frame_data> guard(data);
-	size_t size = data.cloud->points.size();
-	viewer.data().clear();
-	if (size == 0)
-		return;
+		std::lock_guard<std::mutex> lock(data->mtx);
+		size_t size = data->cloud->points.size();
+		viewer.data().clear();
+		if (size == 0)
+			return;
 
-	printf("Compute cloud %zd\n", size);
+		//printf("Compute cloud %zd\n", size);
 
-	V.resize(size, 3);
-	C.resize(size, 3);
+		V.resize(size, 3);
+		C.resize(size, 3);
 
-	int i = 0;
-	for (auto& p : data.cloud->points) {
+		int i = 0;
+		for (auto& p : data->cloud->points) {
 
-		//printf(" %2.2f, %2.2f, %2.2f ", p.x, p.y, p.z);
-		V(i, 0) = p.x;
-		V(i, 1) = -p.y;
-		V(i, 2) = p.z;
+			//printf(" %2.2f, %2.2f, %2.2f ", p.x, p.y, p.z);
+			V(i, 0) = p.x;
+			V(i, 1) = -p.y;
+			V(i, 2) = p.z;
 
-		C(i, 0) = p.r / 255.f;
-		C(i, 1) = p.g / 255.f;
-		C(i, 2) = p.b / 255.f;
-		i++;
-	}
+			C(i, 0) = p.r / 255.f;
+			C(i, 1) = p.g / 255.f;
+			C(i, 2) = p.b / 255.f;
+			i++;
+		}
 
-	while (viewer.erase_mesh(viewer.selected_data_index)) {};
-	viewer.data().clear();
+		while (viewer.erase_mesh(viewer.selected_data_index)) {};
+		viewer.data().clear();
 
-	Eigen::VectorXd radius(size);
-	// * viewer.core.camera_base_zoom
-	radius.setConstant(er::app_state::get().point_scale);
+		Eigen::VectorXd radius(size);
+		// * viewer.core.camera_base_zoom
+		radius.setConstant(er::app_state::get().point_scale);
 
-	viewer.data().set_points(V, C, radius);
-	id_mesh = viewer.data().id;
+		viewer.data().set_points(V, C, radius);
+		id_mesh = viewer.data().id;
 
-	viewer.append_mesh();
+		viewer.append_mesh();
 
-	//-------------------------------------------------------------------------
-	// Find the bounding box
-	Eigen::Vector3d m = V.colwise().minCoeff();
-	Eigen::Vector3d M = V.colwise().maxCoeff();
+		//-------------------------------------------------------------------------
+		// Find the bounding box
+		Eigen::Vector3d m = V.colwise().minCoeff();
+		Eigen::Vector3d M = V.colwise().maxCoeff();
 
-	// Corners of the bounding box
-	Eigen::MatrixXd V_box(8, 3);
-	V_box <<
-		m(0), m(1), m(2),
-		M(0), m(1), m(2),
-		M(0), M(1), m(2),
-		m(0), M(1), m(2),
-		m(0), m(1), M(2),
-		M(0), m(1), M(2),
-		M(0), M(1), M(2),
-		m(0), M(1), M(2);
+		// Corners of the bounding box
+		Eigen::MatrixXd V_box(8, 3);
+		V_box <<
+			m(0), m(1), m(2),
+			M(0), m(1), m(2),
+			M(0), M(1), m(2),
+			m(0), M(1), m(2),
+			m(0), m(1), M(2),
+			M(0), m(1), M(2),
+			M(0), M(1), M(2),
+			m(0), M(1), M(2);
 
-	// Edges of the bounding box
-	Eigen::MatrixXi E_box(12, 2);
-	E_box <<
-		0, 1,
-		1, 2,
-		2, 3,
-		3, 0,
-		4, 5,
-		5, 6,
-		6, 7,
-		7, 4,
-		0, 4,
-		1, 5,
-		2, 6,
-		7, 3;
+		// Edges of the bounding box
+		Eigen::MatrixXi E_box(12, 2);
+		E_box <<
+			0, 1,
+			1, 2,
+			2, 3,
+			3, 0,
+			4, 5,
+			5, 6,
+			6, 7,
+			7, 4,
+			0, 4,
+			1, 5,
+			2, 6,
+			7, 3;
 
-	Eigen::VectorXd radius_(V_box.rows());
-	radius.setConstant(er::app_state::get().point_scale);
+		Eigen::VectorXd radius_(V_box.rows());
+		radius.setConstant(er::app_state::get().point_scale);
 
-	// Plot the corners of the bounding box as points
-	//viewer.data().add_points(V_box, Eigen::RowVector3d(1, 0, 0), radius_);
-	/*
-	// Plot the edges of the bounding box
-	for (unsigned i = 0; i<E_box.rows(); ++i)
-		viewer.data().add_edges
-		(
-			V_box.row(E_box(i, 0)),
-			V_box.row(E_box(i, 1)),
-			Eigen::RowVector3d(1, 0, 0)
-		);
-	*/
+		// Plot the corners of the bounding box as points
+		//viewer.data().add_points(V_box, Eigen::RowVector3d(1, 0, 0), radius_);
+		/*
+		// Plot the edges of the bounding box
+		for (unsigned i = 0; i<E_box.rows(); ++i)
+			viewer.data().add_edges
+			(
+				V_box.row(E_box(i, 0)),
+				V_box.row(E_box(i, 1)),
+				Eigen::RowVector3d(1, 0, 0)
+			);
+		*/
 
-	// Plot labels with the coordinates of bounding box vertices
-	std::stringstream l1;
-	l1 << m(0) << ", " << m(1) << ", " << m(2);
-	viewer.data().add_label(m, l1.str());
-	std::stringstream l2;
-	l2 << M(0) << ", " << M(1) << ", " << M(2);
-	viewer.data().add_label(M, l2.str());
+		// Plot labels with the coordinates of bounding box vertices
+		std::stringstream l1;
+		l1 << m(0) << ", " << m(1) << ", " << m(2);
+		viewer.data().add_label(m, l1.str());
+		std::stringstream l2;
+		l2 << M(0) << ", " << M(1) << ", " << M(2);
+		viewer.data().add_label(M, l2.str());
 
-	viewer.append_mesh();
+		viewer.append_mesh();
 
-	//-------------------------------------------------------------------------
-	// Plane fitting
-	if (er::app_state::get().show_ground_plane) {
+		//-------------------------------------------------------------------------
+		// Plane fitting
+		if (er::app_state::get().show_ground_plane) {
 
-		Eigen::RowVector3d N;
-		Eigen::RowVector3d cp;
+			Eigen::RowVector3d N;
+			Eigen::RowVector3d cp;
 
-		igl::fit_plane(V, N, cp);
+			igl::fit_plane(V, N, cp);
 
-		// Plane
-		// Ax + By + Cz = D;
+			// Plane
+			// Ax + By + Cz = D;
 
-		float constantD = -N.dot(cp);
+			float constantD = -N.dot(cp);
 
-		viewer.data().add_label(cp, "Ground Centre");
+			viewer.data().add_label(cp, "Ground Centre");
 
-		plane p = plane::fromPointNormal(cp, N);
+			plane p = plane::fromPointNormal(cp, N);
 
-		show_plane(p, m, M);
+			show_plane(p, m, M);
 
-		Eigen::MatrixXd V_axis(4, 3);
+			Eigen::MatrixXd V_axis(4, 3);
+		}
 	}
 }
 
@@ -317,14 +319,17 @@ void er::worker_t::start()
 
 		// Position the camera in our reference frame
 		viewer.core.camera_eye = Eigen::Vector3f(0, 0, -2.5f);
+		viewer.core.is_animating = true;
+		return false;
+	};
 
+	viewer.callback_pre_draw = [&] (auto viewer_) {
 		return false;
 	};
 
 	// Thread were we check to see if we have to invalidate the pointcloud
-	viewer.callback_post_draw = [&] (auto viewer) {
+	viewer.callback_post_draw = [&] (auto viewer_) {
 		initialized = true;
-
 		// Position the camera in our reference frame
 		compute_cloud();
 		return false;
@@ -338,9 +343,7 @@ void er::worker_t::start()
 // and return.
 void er::worker_t::push_cloud(pcl_ptr cloud)
 {
-	pipeline.process_frame(cloud);
-
-	data.invalidate_cloud(cloud);
+	pipeline.process_frame(cloud, data_views);
 }
 
 er::worker_t *launch_visualizer()
