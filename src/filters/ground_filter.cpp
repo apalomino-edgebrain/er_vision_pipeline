@@ -29,11 +29,8 @@
 #include "../er-pipeline.h"
 #include "ground_filter.h"
 
-void er::ground_filter::input(pcl_ptr cloud)
-{
-}
-
 bool er::ground_filter::process()
 {
+	cloud_out = cloud_in;
 	return true;
 }

@@ -48,6 +48,8 @@ namespace er {
 		//-----------------------------------------------
 		// UI API
 
+		bool invalidate_ui = false;
+
 		bool show_app = true;
 
 		bool show_analysis = true;
@@ -56,6 +58,8 @@ namespace er {
 		bool show_plants = true;
 		bool show_ir_only_data = true;
 		bool show_ground_plane = false;
+
+		bool show_bbx = true;
 
 		bool bool_cloud_raw = false;
 		bool bool_color_cluster = false;

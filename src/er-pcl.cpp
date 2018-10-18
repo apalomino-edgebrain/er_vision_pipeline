@@ -575,8 +575,10 @@ int main(int argc, char * argv[]) try {
 				}
 
 				//--------------- Push cloud ----------------------------
-				if (!er::app_state::get().bool_color_cluster)
-					worker->push_cloud(cloud);
+				if (!er::app_state::get().bool_color_cluster) {
+					er_pipe.process_frame(cloud, worker->get_data_views());
+					worker->update_view = true;
+				}
 			}
 
 			// rs2_frame* frame = rs2_extract_frame(frames, i, &e);
@@ -655,7 +657,7 @@ int main(int argc, char * argv[]) try {
 				pcl::PointCloud <pcl::PointXYZRGBA>::Ptr colored_cloud = reg.getColoredCloudRGBA();
 				if (colored_cloud) {
 					layers.push_back(colored_cloud);
-					worker->push_cloud(colored_cloud);
+					printf("TODO!");
 				}
 			}
 

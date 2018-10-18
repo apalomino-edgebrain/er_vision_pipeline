@@ -42,23 +42,16 @@ namespace er {
 	{
 	public:
 		bool initialized = false;
+		bool update_view = false;
 		boost::thread *bthread;
 
 	private:
 		std::vector<frame_data *> data_views;
 
-		int    n_;
-		Eigen::MatrixXd V;
-		Eigen::MatrixXi F;
-		Eigen::MatrixXd C;
-
-		uint32_t id_axis = -1;
-		uint32_t id_plane = -1;
-		uint32_t id_mesh = -1;
-
-		er::pipeline pipeline;
-
 	public:
+		// Encapsulate the vector with the views. We will refactor all this.
+		std::vector<er::frame_data *> &get_data_views();
+
 		// Launches the visualizer, creates a window and returns.
 		void setup();
 
@@ -71,16 +64,12 @@ namespace er {
 		void test_cube();
 
 		// Converts the PCL cloud into a libIGL compatible mesh
-		void show_plane(plane &p, Eigen::Vector3d &m, Eigen::Vector3d M);
-
-		// Converts the PCL cloud into a libIGL compatible mesh
 		void compute_cloud();
 
 		// Launches the thread
 		void start();
 
-		// Thread safe function to update the worker with a cloud
-		void push_cloud(pcl_ptr cloud);
+		int axis_index;
 	};
 }
 

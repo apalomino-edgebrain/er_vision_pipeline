@@ -134,18 +134,65 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 
 		{
 			ImGui::Begin("Analysis", &er::app_state::get().show_analysis, flags);
-			ImGui::Checkbox("Show ground", &er::app_state::get().show_ground);
-			ImGui::Checkbox("Show plants", &er::app_state::get().show_plants);
-			ImGui::Checkbox("Extract plants", &er::app_state::get().bool_extract_plants);
+
+			if (ImGui::Checkbox("Show ground", &er::app_state::get().show_ground)) {
+				er::app_state::get().invalidate_ui = true;
+				printf(" Show ground\n");
+			}
+
+			if (ImGui::Checkbox("Show plants", &er::app_state::get().show_plants)) {
+				er::app_state::get().invalidate_ui = true;
+				printf(" Show plants\n");
+			}
+
+			if (ImGui::Checkbox("Extract plants", &er::app_state::get().bool_extract_plants))
+			{
+				er::app_state::get().invalidate_ui = true;
+				printf(" Extract plants\n");
+			};
+
 			ImGui::Separator();
 
-			ImGui::Checkbox("Raw Cloud", &er::app_state::get().bool_cloud_raw);
-			ImGui::Checkbox("Color cluster", &er::app_state::get().bool_color_cluster);
-			ImGui::Checkbox("Voxel Process", &er::app_state::get().bool_voxel_process);
-			ImGui::Checkbox("Distance Filter", &er::app_state::get().bool_distance_filter);
+			if (ImGui::Checkbox("BBX", &er::app_state::get().show_bbx))
+			{
+				er::app_state::get().invalidate_ui = true;
+				printf(" Color cluster \n");
+			};
 
-			ImGui::Checkbox("Ground plane", &er::app_state::get().show_ground_plane);
-			ImGui::Checkbox("Show IR data", &er::app_state::get().show_ir_only_data);
+			if (ImGui::Checkbox("Raw Cloud", &er::app_state::get().bool_cloud_raw))
+			{
+				er::app_state::get().invalidate_ui = true;
+				printf(" Color cluster \n");
+			};
+
+			if (ImGui::Checkbox("Color cluster", &er::app_state::get().bool_color_cluster))
+			{
+				er::app_state::get().invalidate_ui = true;
+				printf(" Color cluster \n");
+			};
+
+			if (ImGui::Checkbox("Voxel Process", &er::app_state::get().bool_voxel_process))
+			{
+				er::app_state::get().invalidate_ui = true;
+				printf(" Voxel Process \n");
+			};
+
+			if (ImGui::Checkbox("Distance Filter", &er::app_state::get().bool_distance_filter))
+			{
+				er::app_state::get().invalidate_ui = true;
+				printf(" Distance filter \n");
+			};
+
+			if (ImGui::Checkbox("Ground plane", &er::app_state::get().show_ground_plane))
+			{
+				er::app_state::get().invalidate_ui = true;
+				printf(" Show ground plane \n");
+			};
+
+			if (ImGui::Checkbox("Show IR data", &er::app_state::get().show_ir_only_data)) {
+				er::app_state::get().invalidate_ui = true;
+				printf(" Show IR data \n");
+			};
 
 			ImGui::Separator();
 			if (er::app_state::get().playing)

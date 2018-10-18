@@ -155,22 +155,39 @@ namespace er {
 	};
 
 	// Lockable object that contains our raw point cloud
+	// And is able to render to our opengl views
 	class frame_data
 	{
 	public:
+		Eigen::Vector3d bbx_m;
+		Eigen::Vector3d bbx_M;
+
 		bool initialized;
 		uint32_t time_t;
 
 		std::mutex mtx;
 
-		volatile uint8_t idx;
+		volatile uint32_t idx;
 		volatile bool invalidate;
 
 		pcl_ptr cloud;
 
 		frame_data();
 
+		// Pushes a cloud into this item
 		void invalidate_cloud(pcl_ptr cloud_);
+
+		//----------
+		// Renderer
+
+		volatile int id_mesh;
+		Eigen::MatrixXd V;
+		Eigen::MatrixXi F;
+		Eigen::MatrixXd C;
+		Eigen::VectorXd radius;
+
+		void calculate_view();
+		void render(void *viewer);
 	};
 
 	// We have process_units on the system that accept point clouds, images
@@ -183,31 +200,39 @@ namespace er {
 	class process_unit
 	{
 	public:
+		// Do we show this unit on the display?
+		bool visible = true;
+
+		frame_data *view = nullptr;
+
 		pcl_ptr cloud_in;
 		pcl_ptr cloud_out;
 
 		process_unit();
 		~process_unit();
 
+		// Sends the cloud out to frame data if we are looking to render it
+		void invalidate_view();
+
 		void input(frame_2d type, void *color_frame);
 		void input(pcl_ptr cloud);
 
 		// Process the current process_unit and runs the algorithms
 		// Returns true if the process has finished so we call the callback
-		bool process();
+		virtual bool process();
 
 		// Callback function in case there is someone registered to it.
 		// This might end up being a vector of callbacks since we will
 		// have multiple processes waiting for this result.
 		std::function<void(pcl_ptr)> f_callback_output;
 
-		pcl_ptr output();
+		pcl_ptr output(int id);
 	};
 
     class pipeline
     {
     public:
-		std::vector<process_unit *> process_units;
+		std::map<std::string, process_unit *> process_units;
 
         pipeline();
         ~pipeline();

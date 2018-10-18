@@ -40,6 +40,38 @@ igl::opengl::glfw::Viewer viewer;
 er::worker_t viewer_thread;
 
 //#############################################################################
+// Utils
+//#############################################################################
+
+// Renders a plane in space
+void render_plane(igl::opengl::glfw::Viewer *viewer,
+	plane &p, Eigen::Vector3d &m, Eigen::Vector3d M)
+{
+	Eigen::MatrixXd V(4, 3);
+	V <<
+		m(0), p.get_y(m(0), m(2)), m(2),
+		M(0), p.get_y(M(0), m(2)), m(2),
+		m(0), p.get_y(m(0), M(2)), M(2),
+		M(0), p.get_y(M(0), M(2)), M(2);
+
+	Eigen::MatrixXi F(2, 3);
+	F <<
+		0, 1, 2,
+		1, 2, 3;
+
+	Eigen::MatrixXd C;
+	C.resize(4, 3);
+
+	Eigen::VectorXd Z = V.col(2);
+	igl::jet(Z, true, C);
+
+	viewer->data().set_mesh(V, F);
+	viewer->data().set_colors(C);
+
+	viewer->append_mesh();
+}
+
+//#############################################################################
 // Pushed point cloud from the realsense Thread
 //#############################################################################
 
@@ -51,11 +83,110 @@ er::frame_data::frame_data()
 	cloud = pcl_ptr(new pcl::PointCloud<pcl::PointXYZRGBA>);
 }
 
-void er::frame_data::invalidate_cloud(pcl_ptr cloud_)
+void er::frame_data::calculate_view()
 {
 	std::lock_guard<std::mutex> lock(mtx);
+	size_t size = cloud->points.size();
+
+	V.resize(size, 3);
+	C.resize(size, 3);
+
+	int i = 0;
+	for (auto& p : cloud->points) {
+
+		//printf(" %2.2f, %2.2f, %2.2f ", p.x, p.y, p.z);
+		V(i, 0) = p.x;
+		V(i, 1) = -p.y;
+		V(i, 2) = p.z;
+
+		C(i, 0) = p.r / 255.f;
+		C(i, 1) = p.g / 255.f;
+		C(i, 2) = p.b / 255.f;
+		i++;
+	}
+
+	radius.resize(size);
+	radius.setConstant(er::app_state::get().point_scale);
+
+	bbx_m = V.colwise().minCoeff();
+	bbx_M = V.colwise().maxCoeff();
+}
+
+void er::frame_data::render(void *viewer_ptr)
+{
+	std::lock_guard<std::mutex> lock(mtx);
+	igl::opengl::glfw::Viewer *viewer = (igl::opengl::glfw::Viewer *) viewer_ptr;
+
+	viewer->data().set_points(V, C, radius);
+	id_mesh = viewer->data().id;
+	viewer->append_mesh();
+
+	//-------------------------------------------------------------------------
+	// Find the bounding box
+	if (er::app_state::get().show_bbx) {
+
+		// Corners of the bounding box
+		Eigen::MatrixXd V_box(8, 3);
+		V_box <<
+			bbx_m(0), bbx_m(1), bbx_m(2),
+			bbx_M(0), bbx_m(1), bbx_m(2),
+			bbx_M(0), bbx_M(1), bbx_m(2),
+			bbx_m(0), bbx_M(1), bbx_m(2),
+			bbx_m(0), bbx_m(1), bbx_M(2),
+			bbx_M(0), bbx_m(1), bbx_M(2),
+			bbx_M(0), bbx_M(1), bbx_M(2),
+			bbx_m(0), bbx_M(1), bbx_M(2);
+
+		// Edges of the bounding box
+		Eigen::MatrixXi E_box(12, 2);
+		E_box << 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 7, 3;
+
+		Eigen::VectorXd radius_(V_box.rows());
+		radius.setConstant(er::app_state::get().point_scale);
+
+		// Plot labels with the coordinates of bounding box vertices
+		std::stringstream l1;
+		l1 << bbx_m(0) << ", " << bbx_m(1) << ", " << bbx_m(2);
+		viewer->data().add_label(bbx_m, l1.str());
+		std::stringstream l2;
+		l2 << bbx_M(0) << ", " << bbx_M(1) << ", " << bbx_M(2);
+		viewer->data().add_label(bbx_M, l2.str());
+	}
+
+	//-------------------------------------------------------------------------
+	// Plane fitting
+	if (er::app_state::get().show_ground_plane) {
+		Eigen::Vector3d m = V.colwise().minCoeff();
+		Eigen::Vector3d M = V.colwise().maxCoeff();
+
+		Eigen::RowVector3d N;
+		Eigen::RowVector3d cp;
+
+		igl::fit_plane(V, N, cp);
+
+		// Plane
+		// Ax + By + Cz = D;
+
+		float constantD = -N.dot(cp);
+		viewer->data().add_label(cp, "Ground Centre");
+
+		plane p = plane::fromPointNormal(cp, N);
+		render_plane(viewer, p, m, M);
+
+		Eigen::MatrixXd V_axis(4, 3);
+	}
+}
+
+void er::frame_data::invalidate_cloud(pcl_ptr cloud_)
+{
 	invalidate = true;
 	pcl::copyPointCloud(*cloud_, *cloud);
+
+	size_t size = cloud->points.size();
+	if (size == 0)
+		return;
+
+	calculate_view();
 }
 
 void er::worker_t::setup()
@@ -73,10 +204,7 @@ void er::worker_t::add_axis()
 		0, 0, 1;
 
 	Eigen::MatrixXi E_axis(3, 2);
-	E_axis <<
-		0, 1,
-		0, 2,
-		0, 3;
+	E_axis << 0, 1, 0, 2, 0, 3;
 
 	Eigen::VectorXd radius(V_axis.rows());
 	radius.setConstant(er::app_state::get().point_scale * 10 * viewer.core.camera_base_zoom);
@@ -97,8 +225,8 @@ void er::worker_t::add_axis()
 	Eigen::Vector3d centre(0, 0, 0);
 	viewer.data().add_label(centre, "centre");
 
-	id_axis = viewer.data().id;
 	viewer.append_mesh();
+	axis_index = viewer.selected_data_index;
 }
 
 void er::worker_t::test_cube()
@@ -132,161 +260,25 @@ void er::worker_t::test_cube()
 	viewer.append_mesh();
 }
 
-#define W 2
-#define H 10
-
-void er::worker_t::show_plane(plane &p, Eigen::Vector3d &m, Eigen::Vector3d M)
-{
-	Eigen::MatrixXd V(4, 3);
-	V <<
-		m(0), p.get_y(m(0), m(2)), m(2),
-		M(0), p.get_y(M(0), m(2)), m(2),
-		m(0), p.get_y(m(0), M(2)), M(2),
-		M(0), p.get_y(M(0), M(2)), M(2);
-
-	Eigen::MatrixXi F(2, 3);
-	F <<
-		0, 1, 2,
-		1, 2, 3;
-
-	Eigen::VectorXd Z = V.col(2);
-	igl::jet(Z, true, C);
-
-	viewer.data().set_mesh(V, F);
-	viewer.data().set_colors(C);
-
-	id_plane = viewer.data().id;
-	viewer.append_mesh();
-}
-
 void er::worker_t::compute_cloud()
 {
 	if (!initialized)
 		return;
 
-	for (auto &data : data_views) {
-		if (!data->invalidate)
-			return;
+	if (!update_view)
+		return;
 
-		std::lock_guard<std::mutex> lock(data->mtx);
-		size_t size = data->cloud->points.size();
-		viewer.data().clear();
-		if (size == 0)
-			return;
-
-		//printf("Compute cloud %zd\n", size);
-
-		V.resize(size, 3);
-		C.resize(size, 3);
-
-		int i = 0;
-		for (auto& p : data->cloud->points) {
-
-			//printf(" %2.2f, %2.2f, %2.2f ", p.x, p.y, p.z);
-			V(i, 0) = p.x;
-			V(i, 1) = -p.y;
-			V(i, 2) = p.z;
-
-			C(i, 0) = p.r / 255.f;
-			C(i, 1) = p.g / 255.f;
-			C(i, 2) = p.b / 255.f;
-			i++;
-		}
-
-		while (viewer.erase_mesh(viewer.selected_data_index)) {};
-		viewer.data().clear();
-
-		Eigen::VectorXd radius(size);
-		// * viewer.core.camera_base_zoom
-		radius.setConstant(er::app_state::get().point_scale);
-
-		viewer.data().set_points(V, C, radius);
-		id_mesh = viewer.data().id;
-
-		viewer.append_mesh();
-
-		//-------------------------------------------------------------------------
-		// Find the bounding box
-		Eigen::Vector3d m = V.colwise().minCoeff();
-		Eigen::Vector3d M = V.colwise().maxCoeff();
-
-		// Corners of the bounding box
-		Eigen::MatrixXd V_box(8, 3);
-		V_box <<
-			m(0), m(1), m(2),
-			M(0), m(1), m(2),
-			M(0), M(1), m(2),
-			m(0), M(1), m(2),
-			m(0), m(1), M(2),
-			M(0), m(1), M(2),
-			M(0), M(1), M(2),
-			m(0), M(1), M(2);
-
-		// Edges of the bounding box
-		Eigen::MatrixXi E_box(12, 2);
-		E_box <<
-			0, 1,
-			1, 2,
-			2, 3,
-			3, 0,
-			4, 5,
-			5, 6,
-			6, 7,
-			7, 4,
-			0, 4,
-			1, 5,
-			2, 6,
-			7, 3;
-
-		Eigen::VectorXd radius_(V_box.rows());
-		radius.setConstant(er::app_state::get().point_scale);
-
-		// Plot the corners of the bounding box as points
-		//viewer.data().add_points(V_box, Eigen::RowVector3d(1, 0, 0), radius_);
-		/*
-		// Plot the edges of the bounding box
-		for (unsigned i = 0; i<E_box.rows(); ++i)
-			viewer.data().add_edges
-			(
-				V_box.row(E_box(i, 0)),
-				V_box.row(E_box(i, 1)),
-				Eigen::RowVector3d(1, 0, 0)
-			);
-		*/
-
-		// Plot labels with the coordinates of bounding box vertices
-		std::stringstream l1;
-		l1 << m(0) << ", " << m(1) << ", " << m(2);
-		viewer.data().add_label(m, l1.str());
-		std::stringstream l2;
-		l2 << M(0) << ", " << M(1) << ", " << M(2);
-		viewer.data().add_label(M, l2.str());
-
-		viewer.append_mesh();
-
-		//-------------------------------------------------------------------------
-		// Plane fitting
-		if (er::app_state::get().show_ground_plane) {
-
-			Eigen::RowVector3d N;
-			Eigen::RowVector3d cp;
-
-			igl::fit_plane(V, N, cp);
-
-			// Plane
-			// Ax + By + Cz = D;
-
-			float constantD = -N.dot(cp);
-
-			viewer.data().add_label(cp, "Ground Centre");
-
-			plane p = plane::fromPointNormal(cp, N);
-
-			show_plane(p, m, M);
-
-			Eigen::MatrixXd V_axis(4, 3);
-		}
+	while (viewer.selected_data_index != axis_index) {
+		viewer.erase_mesh(viewer.selected_data_index);
 	}
+
+	viewer.data().clear();
+
+	for (auto &data : data_views) {
+		data->render((void *) &viewer);
+	}
+
+	update_view = false;
 }
 
 void er::worker_t::start()
@@ -300,6 +292,12 @@ void er::worker_t::start()
 	boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
 
 	//------------------------------------------------------------
+	// Just a basic testing Grid
+	//
+	Eigen::MatrixXd V;
+	Eigen::MatrixXi F;
+	Eigen::MatrixXd C;
+
 	igl::readOFF("S:/libigl/tutorial/shared/grid.off", V, F);
 
 	Eigen::VectorXd radius(V.rows());
@@ -309,6 +307,7 @@ void er::worker_t::start()
 	igl::jet(Z, true, C);
 
 	viewer.data().set_points(V, C, radius);
+	//------------------------------------------------------------
 
 	initialize_visualizer_ui(viewer);
 
@@ -338,12 +337,9 @@ void er::worker_t::start()
 	viewer.launch();
 }
 
-// Lock the data access when we push the cloud.
-// On this thread we will copy as fast as we can the pcl frame
-// and return.
-void er::worker_t::push_cloud(pcl_ptr cloud)
+std::vector<er::frame_data *> &er::worker_t::get_data_views()
 {
-	pipeline.process_frame(cloud, data_views);
+	return data_views;
 }
 
 er::worker_t *launch_visualizer()

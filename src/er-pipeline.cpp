@@ -28,6 +28,8 @@
 
 #include "er-pipeline.h"
 
+#include "filters/ground_filter.h"
+
 //-----------------------------------------------------------------------------
 // STD
 //-----------------------------------------------------------------------------
@@ -42,10 +44,10 @@ using namespace std;
 #include <boost/filesystem.hpp>
 using namespace boost::filesystem;
 
-
 er::pipeline::pipeline()
 {
     printf("+ Initialize pipeline\n");
+	process_units["ground"] = new er::ground_filter();
 }
 
 er::pipeline::~pipeline()
@@ -84,32 +86,10 @@ void er::pipeline::initialize_folder(std::string folder_path)
 }
 
 //-----------------------------------------------------------------------------
-// Main processing for our input frame
-//-----------------------------------------------------------------------------
-
-// We will also add the OpenCV images.
-
-// When we process a frame we get our cached frame data
-// We have different views over the data so we can display all kinds of intermediate
-// processed objects.
-
-void er::pipeline::process_frame(pcl_ptr cloud, std::vector<frame_data *> &data_views)
-{
-	if (data_views.size() == 0) {
-		frame_data *data = new frame_data();
-		data_views.push_back(data);
-	}
-
-	for (auto &frame : data_views) {
-		frame->invalidate_cloud(cloud);
-	}
-}
-
-//-----------------------------------------------------------------------------
 // process_units system
 //-----------------------------------------------------------------------------
 
-er::process_unit::process_unit(): f_callback_output{nullptr}
+er::process_unit::process_unit() : f_callback_output { nullptr }
 {
 
 }
@@ -127,6 +107,17 @@ void er::process_unit::input(frame_2d type, void *color_frame)
 	};
 }
 
+void er::process_unit::invalidate_view()
+{
+	if (!visible)
+		return;
+
+	if (cloud_out == nullptr || view == nullptr)
+		return;
+
+	view->invalidate_cloud(cloud_out);
+}
+
 bool er::process_unit::process()
 {
 	return true;
@@ -142,7 +133,41 @@ void er::process_unit::input(pcl_ptr cloud)
 	};
 }
 
-pcl_ptr er::process_unit::output()
+pcl_ptr er::process_unit::output(int id)
 {
 	return nullptr;
+}
+
+//-----------------------------------------------------------------------------
+// Main processing for our input frame
+//-----------------------------------------------------------------------------
+
+// We will also add the OpenCV images.
+
+// When we process a frame we get our cached frame data
+// We have different views over the data so we can display all kinds of intermediate
+// processed objects.
+
+void er::pipeline::process_frame(pcl_ptr cloud, std::vector<frame_data *> &data_views)
+{
+	process_unit *pu = process_units["ground"];
+	pu->input(cloud);
+
+	// Initialize the display frame buffers
+
+	// TODO: (this is not thread safe).
+	// Maybe lock on the worker thread?
+	for (auto const &x : process_units) {
+		process_unit *pu = x.second;
+		if (pu->view == nullptr) {
+			pu->view = new er::frame_data();
+			data_views.push_back(pu->view);
+		}
+
+		// Here we do the render pre-process
+		if (pu->visible) {
+			pu->invalidate_view();
+		}
+
+	}
 }
