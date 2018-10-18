@@ -35,6 +35,7 @@ namespace er {
 		ground_filter() {};
 		~ground_filter() {};
 		bool process() override;
+		void invalidate_view() override;
 	};
 }
 

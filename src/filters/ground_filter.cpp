@@ -27,10 +27,47 @@
 //
 
 #include "../er-pipeline.h"
+#include "../application_state.h"
+
 #include "ground_filter.h"
 
-bool er::ground_filter::process()
+using namespace er;
+
+#define NVDI -0.345f
+
+bool ground_filter::process()
 {
-	cloud_out = cloud_in;
+	if (cloud_out == nullptr) {
+		pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
+		cloud_out = cloud;
+	} else {
+		// TODO: Do not clear and reuse points
+		cloud_out->clear();
+	}
+
+	for (auto& p : cloud_in->points) {
+		bool add_point = true;
+
+		float nvdi = float(p.a - p.r) / (p.a + p.r);
+
+		if (nvdi > NVDI) {
+			add_point = false;
+		}
+
+		if (add_point && p.z >= 0.01f)
+			cloud_out->points.push_back(p);
+	}
+
 	return true;
+}
+
+void ground_filter::invalidate_view()
+{
+	if (!visible)
+		return;
+
+	if (cloud_out == nullptr || view == nullptr)
+		return;
+
+	view->invalidate_cloud(cloud_out);
 }

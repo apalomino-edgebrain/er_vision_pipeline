@@ -495,7 +495,6 @@ int main(int argc, char * argv[]) try {
 					ptr++;
 					cloud_raw->points.push_back(p);
 				}
-
 			}
 
 			//------------- Color extraction ------------------------

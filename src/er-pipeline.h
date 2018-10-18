@@ -200,6 +200,9 @@ namespace er {
 	class process_unit
 	{
 	public:
+		// Each unit should be able to calculate the time it took to process.
+		// TODO Benchmarking on the process units
+
 		// Do we show this unit on the display?
 		bool visible = true;
 
@@ -211,15 +214,16 @@ namespace er {
 		process_unit();
 		~process_unit();
 
-		// Sends the cloud out to frame data if we are looking to render it
-		void invalidate_view();
-
 		void input(frame_2d type, void *color_frame);
 		void input(pcl_ptr cloud);
 
 		// Process the current process_unit and runs the algorithms
 		// Returns true if the process has finished so we call the callback
 		virtual bool process();
+
+		// Sends the cloud out to frame data if we are looking to render it
+		// Units can render whatever they want by overriding this call
+		virtual void invalidate_view();
 
 		// Callback function in case there is someone registered to it.
 		// This might end up being a vector of callbacks since we will
