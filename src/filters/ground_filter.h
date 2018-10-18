@@ -27,11 +27,14 @@
 #define ground_filter_H_
 
 #include "../er-pipeline.h"
+#include "../algebra/plane.h"
 
 namespace er {
 	class ground_filter : public process_unit
 	{
 	public:
+		plane ground_plane;
+
 		ground_filter() {};
 		~ground_filter() {};
 		bool process() override;

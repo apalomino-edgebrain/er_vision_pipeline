@@ -28,12 +28,28 @@
 
 #include "../er-pipeline.h"
 #include "../application_state.h"
+#include <igl/fit_plane.h>
 
 #include "ground_filter.h"
 
 using namespace er;
 
 #define NVDI -0.345f
+
+//------ BASIC FLOOR DISCOVERY & MAPPING ------
+// Create floor grid
+//  Width x Height
+
+// Algorithm of floor removal and floor discovery
+// Split in two clusters
+//		1. Some green + and nvdi = Plant
+//		2. No color, just ground
+//
+// Find the plane defined by the ground plane
+
+// Reduce floor cloud density with a voxelgrid
+// Raytrace points from floor grid up to find the right position in space
+// Classify between floor and plants
 
 bool ground_filter::process()
 {
@@ -58,6 +74,17 @@ bool ground_filter::process()
 			cloud_out->points.push_back(p);
 	}
 
+	if (view != nullptr) {
+		view->invalidate_cloud(cloud_out);
+
+		Eigen::RowVector3d N;
+		Eigen::RowVector3d cp;
+		igl::fit_plane(view->V, N, cp);
+
+		// Plane
+		// Ax + By + Cz = D;
+		ground_plane = plane::fromPointNormal(cp, N);
+	}
 	return true;
 }
 
@@ -69,5 +96,4 @@ void ground_filter::invalidate_view()
 	if (cloud_out == nullptr || view == nullptr)
 		return;
 
-	view->invalidate_cloud(cloud_out);
 }

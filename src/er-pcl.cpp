@@ -685,21 +685,6 @@ int main(int argc, char * argv[]) try {
 			}
 		}
 
-		//------ BASIC FLOOR DISCOVERY & MAPPING ------
-		// Create floor grid
-		//  Width x Height
-
-		// Algorithm of floor removal and floor discovery
-		// Split in two clusters
-		//		1. Some green + and nvdi = Plant
-		//		2. No color, just ground
-
-		// Reduce floor cloud density with a voxelgrid
-		//
-		// Raytrace points from floor grid up to find the right position in space
-		//
-		// Classify between floor and plants
-
 		draw_pointcloud(app, app_state, layers);
 		//draw_polygons(app, app_state);
 
