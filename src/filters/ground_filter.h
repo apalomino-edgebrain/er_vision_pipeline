@@ -34,6 +34,8 @@ namespace er {
 	{
 	public:
 		plane ground_plane;
+		Eigen::RowVector3d plane_centre;
+		Eigen::MatrixXd V_box;
 
 		ground_filter() {};
 		~ground_filter() {};

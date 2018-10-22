@@ -168,6 +168,5 @@ void er::pipeline::process_frame(pcl_ptr cloud, std::vector<frame_data *> &data_
 		if (pu->visible) {
 			pu->invalidate_view();
 		}
-
 	}
 }

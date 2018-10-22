@@ -140,6 +140,10 @@ using pcl_ptr = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr;
 
 #include "er-logging.h"
 
+typedef Eigen::Transform<double, 3, Eigen::Affine> Tform3;
+typedef Eigen::Vector3d Vec3;
+typedef Eigen::Quaterniond Quat;
+
 //-----------------------------------------------------------------------------
 // FARM PIPELINE
 //-----------------------------------------------------------------------------
@@ -147,6 +151,8 @@ using pcl_ptr = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr;
 #include "process_3d.h"
 
 #include <mutex>
+
+struct plane;
 
 namespace er {
 	enum class frame_2d
@@ -177,6 +183,22 @@ namespace er {
 		// Pushes a cloud into this item
 		void invalidate_cloud(pcl_ptr cloud_);
 
+		// Helper to render text
+		void render_text(void *viewer_ptr, Eigen::RowVector3d &cp,
+			const char *text);
+
+		// Helper to render a plane
+		void render_plane(void *viewer_ptr,
+			plane &ground_plane,
+			Eigen::Vector3d &m,
+			Eigen::Vector3d &M);
+
+		// Renders a point in space and text
+		void render_point(void *viewer_ptr,
+			Eigen::RowVector3d &cp,
+			Eigen::Vector3d &color,
+			const char *text = nullptr);
+
 		//----------
 		// Renderer
 
@@ -188,6 +210,9 @@ namespace er {
 
 		void calculate_view();
 		void render(void *viewer);
+
+		// Callback in case we want to have a custom renderer for this data frame
+		std::function<void(void *viewer)> f_external_render = nullptr;
 	};
 
 	// We have process_units on the system that accept point clouds, images

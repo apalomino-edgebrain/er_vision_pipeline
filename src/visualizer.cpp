@@ -43,43 +43,13 @@ er::worker_t viewer_thread;
 // Utils
 //#############################################################################
 
-// Renders a plane in space
-void render_plane(igl::opengl::glfw::Viewer *viewer,
-	plane &p, Eigen::Vector3d &m, Eigen::Vector3d M)
-{
-	Eigen::MatrixXd V(4, 3);
-	V <<
-		m(0), p.get_y(m(0), m(2)), m(2),
-		M(0), p.get_y(M(0), m(2)), m(2),
-		m(0), p.get_y(m(0), M(2)), M(2),
-		M(0), p.get_y(M(0), M(2)), M(2);
-
-	Eigen::MatrixXi F(2, 3);
-	F <<
-		0, 1, 2,
-		1, 2, 3;
-
-	Eigen::MatrixXd C;
-	C.resize(4, 3);
-
-	Eigen::VectorXd Z = V.col(2);
-	igl::jet(Z, true, C);
-
-	viewer->data().set_mesh(V, F);
-	viewer->data().set_colors(C);
-
-	viewer->append_mesh();
-}
-
 //#############################################################################
 // Pushed point cloud from the realsense Thread
 //#############################################################################
 
-er::frame_data::frame_data()
+er::frame_data::frame_data() : f_external_render { nullptr }, initialized { false },
+idx { 0 }, invalidate { false }
 {
-	idx = 0;
-	initialized = false;
-	invalidate = false;
 	cloud = pcl_ptr(new pcl::PointCloud<pcl::PointXYZRGBA>);
 }
 
@@ -153,27 +123,8 @@ void er::frame_data::render(void *viewer_ptr)
 		viewer->data().add_label(bbx_M, l2.str());
 	}
 
-	//-------------------------------------------------------------------------
-	// Plane fitting
-	if (er::app_state::get().show_ground_plane) {
-		Eigen::Vector3d m = V.colwise().minCoeff();
-		Eigen::Vector3d M = V.colwise().maxCoeff();
-
-		Eigen::RowVector3d N;
-		Eigen::RowVector3d cp;
-
-		igl::fit_plane(V, N, cp);
-
-		// Plane
-		// Ax + By + Cz = D;
-
-		float constantD = -N.dot(cp);
-		viewer->data().add_label(cp, "Ground Centre");
-
-		plane p = plane::fromPointNormal(cp, N);
-		render_plane(viewer, p, m, M);
-
-		Eigen::MatrixXd V_axis(4, 3);
+	if (f_external_render != nullptr) {
+		f_external_render(viewer_ptr);
 	}
 }
 
@@ -188,6 +139,78 @@ void er::frame_data::invalidate_cloud(pcl_ptr cloud_)
 
 	calculate_view();
 }
+
+void er::frame_data::render_text(void *viewer_ptr, Eigen::RowVector3d &cp,
+	const char *text)
+{
+	if (viewer_ptr == nullptr)
+		return;
+
+	igl::opengl::glfw::Viewer *viewer = (igl::opengl::glfw::Viewer *) viewer_ptr;
+	viewer->data().add_label(cp, text);
+}
+
+// Helper to render a plane
+void er::frame_data::render_point(void *viewer_ptr,
+	Eigen::RowVector3d &cp,
+	Eigen::Vector3d &color,
+	const char *text)
+{
+	if (viewer_ptr == nullptr)
+		return;
+
+	igl::opengl::glfw::Viewer *viewer = (igl::opengl::glfw::Viewer *) viewer_ptr;
+
+	if (text != nullptr)
+		viewer->data().add_label(cp, text);
+
+	Eigen::MatrixXd V(1, 3);
+	V << cp[0], cp[1], cp[2];
+
+	Eigen::MatrixXd C(1, 3);
+	C << color[0], color[1], color[2];
+
+	Eigen::VectorXd radius(1);
+	radius.setConstant(er::app_state::get().point_scale * 2.5);
+
+	viewer->data().set_points(V, C, radius);
+}
+
+// Helper to render a plane
+void er::frame_data::render_plane(void *viewer_ptr,
+	plane &p,
+	Eigen::Vector3d &m,
+	Eigen::Vector3d &M)
+{
+	if (viewer_ptr == nullptr)
+		return;
+
+	igl::opengl::glfw::Viewer *viewer = (igl::opengl::glfw::Viewer *) viewer_ptr;
+	Eigen::MatrixXd V(4, 3);
+	V <<
+		m(0), p.get_y(m(0), m(2)), m(2),
+		M(0), p.get_y(M(0), m(2)), m(2),
+		m(0), p.get_y(m(0), M(2)), M(2),
+		M(0), p.get_y(M(0), M(2)), M(2);
+
+	Eigen::MatrixXi F(2, 3);
+	F <<
+		0, 1, 2,
+		1, 2, 3;
+
+	Eigen::MatrixXd C;
+	C.resize(4, 3);
+
+	Eigen::VectorXd Z = V.col(2);
+	igl::jet(Z, true, C);
+
+	viewer->data().set_mesh(V, F);
+	viewer->data().set_colors(C);
+
+	viewer->append_mesh();
+}
+
+//----------------------------------------------------------------------------
 
 void er::worker_t::setup()
 {
@@ -207,7 +230,7 @@ void er::worker_t::add_axis()
 	E_axis << 0, 1, 0, 2, 0, 3;
 
 	Eigen::VectorXd radius(V_axis.rows());
-	radius.setConstant(er::app_state::get().point_scale * 10 * viewer.core.camera_base_zoom);
+	radius.setConstant(er::app_state::get().point_scale * 2.5 * viewer.core.camera_base_zoom);
 
 	// Plot the corners of the bounding box as points
 	viewer.data().add_points(V_axis, Eigen::RowVector3d(1, 0, 0), radius);
@@ -281,8 +304,44 @@ void er::worker_t::compute_cloud()
 	update_view = false;
 }
 
+#include <Eigen/Geometry>
+
+//-------------------------------------------------------------------------
+// Random code testing
+void testing()
+{
+	Eigen::MatrixXd V_test;
+	V_test.resize(2, 3);
+	V_test << 0, 0, 0,
+		0, 1, 0;
+
+	using namespace std;
+	using namespace Eigen;
+
+	cout << V_test << endl;
+
+	Tform3 T;
+	T = Tform3::Identity();
+	cout << "T = Tform3::Identity();" << endl;
+	cout << "T=[" << endl << T.affine().matrix() << endl << "];" << endl;
+	cout << "T.translate(Vec3(1,2,3));" << endl;
+	T.translate(Vec3(1, 2, 3));
+	cout << "T=[" << endl << T.affine().matrix() << endl << "];" << endl;
+
+	for (int r = 0; r < V_test.rows(); r++) {
+		Vector3d v = V_test.row(r);
+		v = T * v;
+		V_test.row(r) = v;
+	}
+
+	cout << V_test << endl;
+}
+//-------------------------------------------------------------------------
+
 void er::worker_t::start()
 {
+	//testing();
+
 	printf("Start thread\n");
 
 	// Load an example mesh in OFF format
@@ -294,19 +353,40 @@ void er::worker_t::start()
 	//------------------------------------------------------------
 	// Just a basic testing Grid
 	//
-	Eigen::MatrixXd V;
-	Eigen::MatrixXi F;
-	Eigen::MatrixXd C;
+	{
+		Eigen::MatrixXd V, C;
+		Eigen::MatrixXi F;
 
-	igl::readOFF("S:/libigl/tutorial/shared/grid.off", V, F);
+		igl::readOBJ("S:/er_vision_pipeline/assets/floor.obj", V, F);
 
-	Eigen::VectorXd radius(V.rows());
-	radius.setConstant(0.01 * viewer.core.camera_base_zoom);
+		Eigen::VectorXd radius(V.rows());
+		radius.setConstant(0.01 * viewer.core.camera_base_zoom);
 
-	Eigen::VectorXd Z = V.col(2);
-	igl::jet(Z, true, C);
+		Eigen::VectorXd Z = V.col(2);
+		igl::jet(Z, true, C);
 
-	viewer.data().set_points(V, C, radius);
+		viewer.data().set_mesh(V, F);
+		viewer.data().set_colors(C);
+		viewer.append_mesh();
+	}
+
+	// Loads a plane grid for testing purposes
+	/*
+	{
+		Eigen::MatrixXd V, C;
+		Eigen::MatrixXi F;
+
+		igl::readOFF("S:/er_vision_pipeline/assets/grid.off", V, F);
+
+		Eigen::VectorXd radius(V.rows());
+		radius.setConstant(0.01 * viewer.core.camera_base_zoom);
+
+		Eigen::VectorXd Z = V.col(2);
+		igl::jet(Z, true, C);
+
+		viewer.data().set_points(V, C, radius);
+	}
+	*/
 	//------------------------------------------------------------
 
 	initialize_visualizer_ui(viewer);
