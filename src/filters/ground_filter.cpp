@@ -37,6 +37,9 @@
 using namespace er;
 
 #define NVDI -0.345f
+#define IR (0.361f * 255.f)
+#define MAX_LUMINOSITY (150.0f*3.0f)
+
 #define MAX_Z 3
 
 //------ BASIC FLOOR DISCOVERY & MAPPING ------
@@ -77,10 +80,17 @@ bool ground_filter::process()
 	for (auto& p : cloud_in->points) {
 		bool add_point = true;
 
-		float nvdi = float(p.a - p.r) / (p.a + p.r);
-
-		if (nvdi > NVDI) {
+		if (p.r + p.g + p.b > MAX_LUMINOSITY) {
 			add_point = false;
+		} else
+		if (p.a > IR) {
+			add_point = false;
+		} else {
+			float nvdi = float(p.a - p.r) / (p.a + p.r);
+
+			if (nvdi > NVDI) {
+				add_point = false;
+			}
 		}
 
 		if (add_point && p.z >= 0.01f)

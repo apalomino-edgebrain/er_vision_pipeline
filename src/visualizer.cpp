@@ -417,6 +417,8 @@ void er::worker_t::start()
 		return false;
 	};
 
+	viewer.core.viewport << 0, 0, 1800, 924;
+
 	viewer.launch();
 }
 

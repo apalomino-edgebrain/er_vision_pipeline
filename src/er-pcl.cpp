@@ -432,6 +432,7 @@ int main(int argc, char * argv[]) try {
 
 		pcl_ptr cloud_raw(new pcl::PointCloud<pcl::PointXYZRGBA>);
 		pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
+		pcl_ptr cloud_pipe(new pcl::PointCloud<pcl::PointXYZRGBA>);
 
 		if (playback && pipe->poll_for_frames(&frames)) {
 			layers.clear();
@@ -512,16 +513,21 @@ int main(int argc, char * argv[]) try {
 				auto tex_coords = points.get_texture_coordinates();
 
 				cloud->points.clear();
+				cloud_pipe->points.clear();
+
 				i = 0;
 
 				for (auto& p : cloud_raw->points) {
 					auto point_raw = p; // TODO: We make several copies of this point here.
 
 					bool add_point = true;
+					bool add_point_pipe = true;
 
 					if (tex_coords[i].u < 0 || tex_coords[i].u > 1 || tex_coords[i].v < 0 || tex_coords[i].v > 1) {
-						if (!er::app_state::get().show_ir_only_data)
+						if (!er::app_state::get().show_ir_only_data) {
 							add_point = false;
+							add_point_pipe = false;
+						}
 
 					} else {
 						get_texcolor(&color, tex_coords[i].u, tex_coords[i].v, p.r, p.g, p.b);
@@ -573,8 +579,13 @@ int main(int argc, char * argv[]) try {
 
 					}
 
-					if (add_point && p.z >= 0.01f)
-						cloud->points.push_back(point_raw);
+					if (add_point && p.z >= 0.01f) {
+						cloud->points.push_back(p);
+					}
+
+					if (add_point_pipe && p.z >= 0.01f) {
+						cloud_pipe->points.push_back(point_raw);
+					}
 
 					i++;
 					ptr++;
@@ -582,7 +593,7 @@ int main(int argc, char * argv[]) try {
 
 				//--------------- Push cloud ----------------------------
 				if (!er::app_state::get().bool_color_cluster) {
-					er_pipe.process_frame(cloud, worker->get_data_views());
+					er_pipe.process_frame(cloud_pipe, worker->get_data_views());
 					worker->update_view = true;
 				}
 			}
