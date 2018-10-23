@@ -48,13 +48,15 @@ namespace er {
 		//-----------------------------------------------
 		// UI API
 
+		bool bool_debug_verbose = false;
+
 		bool invalidate_ui = false;
 
 		bool show_app = true;
 
 		bool show_analysis = true;
 
-		bool show_ground = true;
+		bool show_ground = false;
 		bool show_plants = true;
 		bool show_ir_only_data = true;
 		bool show_ground_plane = false;
@@ -71,16 +73,18 @@ namespace er {
 		bool bool_tint_ir = true;
 
 		// Aligns the ground with our unit Axis
+		bool bool_traslate = true;
+
 		bool ground_alignment = true;
 		bool ground_alignment_x = true;
 		bool ground_alignment_y = true;
 
 		float min_nvdi = 1;
-		float cur_nvdi = -1;
+		float cur_nvdi = -0.343;
 		float max_nvdi = -1;
 
 		float min_ir = 0;
-		float cur_ir = 0;
+		float cur_ir = 0.361f;
 		float max_ir = 1;
 
 		float cur_max_clip[3] = { 0, 10, 10 };
@@ -91,6 +95,11 @@ namespace er {
 
 		//-----------------------------------------------
 		float point_scale = 0.01f;
+
+		bool bool_override_rotation = false;
+		float rot_x = 0.0f;
+		float rot_y = 0.0f;
+		float rot_z = 0.0f;
 
 		//-----------------------------------------------
 		bool playing = true;

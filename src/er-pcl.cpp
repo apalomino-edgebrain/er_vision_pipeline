@@ -499,6 +499,9 @@ int main(int argc, char * argv[]) try {
 
 			//------------- Color extraction ------------------------
 
+			// All this section is just DEMO Code
+			// We should pass the point cloud directly to the pipeline.
+
 			{
 				rs2::points points;
 				points = pc.calculate(depth);
@@ -510,7 +513,10 @@ int main(int argc, char * argv[]) try {
 
 				cloud->points.clear();
 				i = 0;
+
 				for (auto& p : cloud_raw->points) {
+					auto point_raw = p; // TODO: We make several copies of this point here.
+
 					bool add_point = true;
 
 					if (tex_coords[i].u < 0 || tex_coords[i].u > 1 || tex_coords[i].v < 0 || tex_coords[i].v > 1) {
@@ -519,6 +525,7 @@ int main(int argc, char * argv[]) try {
 
 					} else {
 						get_texcolor(&color, tex_coords[i].u, tex_coords[i].v, p.r, p.g, p.b);
+						point_raw = p;
 
 						float nvdi = float(p.a - p.r) / (p.a + p.r);
 
@@ -566,8 +573,8 @@ int main(int argc, char * argv[]) try {
 
 					}
 
-					if (add_point && p.z >= 0.1f)
-						cloud->points.push_back(p);
+					if (add_point && p.z >= 0.01f)
+						cloud->points.push_back(point_raw);
 
 					i++;
 					ptr++;

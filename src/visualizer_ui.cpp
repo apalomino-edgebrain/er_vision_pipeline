@@ -109,27 +109,53 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 			ImGuiIO& io = ImGui::GetIO();
 			//ImGui::GetIO().IniFilename = "interface.ini";
 
-			ImGui::Begin("app", nullptr, flags);
-			ImGui::Text("Color Spaces");
-			ImGui::Checkbox("Show nvdi", &er::app_state::get().bool_tint_nvdi);
-			ImGui::SliderFloat("NVDI", &er::app_state::get().cur_nvdi,
-										er::app_state::get().min_nvdi,
-										er::app_state::get().max_nvdi);
+			{
+				ImGui::Begin("Raw RGBD View", nullptr, flags);
 
-			ImGui::Checkbox("Show ir", &er::app_state::get().bool_tint_ir);
-			ImGui::SliderFloat("IR", &er::app_state::get().cur_ir, er::app_state::get().min_ir, er::app_state::get().max_ir);
-			//ImGui::SliderFloat("HSV", &cur_nvdi, min_nvdi, max_nvdi);
+				ImGui::Text("Color Spaces");
+				ImGui::Checkbox("Show nvdi", &er::app_state::get().bool_tint_nvdi);
+				ImGui::SliderFloat("NVDI", &er::app_state::get().cur_nvdi,
+					er::app_state::get().min_nvdi,
+					er::app_state::get().max_nvdi);
 
-			ImGui::Text("Clipping Z");
-			ImGui::SliderFloat("Min Z", &er::app_state::get().cur_min_clip[2], er::app_state::get().min_clip[2], er::app_state::get().max_clip[2]);
-			ImGui::SliderFloat("Max Z", &er::app_state::get().cur_max_clip[2], er::app_state::get().min_clip[2], er::app_state::get().max_clip[2]);
+				ImGui::Checkbox("Show ir", &er::app_state::get().bool_tint_ir);
+				ImGui::SliderFloat("IR", &er::app_state::get().cur_ir, er::app_state::get().min_ir, er::app_state::get().max_ir);
+				//ImGui::SliderFloat("HSV", &cur_nvdi, min_nvdi, max_nvdi);
 
-			ImGui::Text("Clipping Y");
-			ImGui::SliderFloat("clipping Y", &er::app_state::get().cur_max_clip[1], er::app_state::get().min_clip[1], er::app_state::get().max_clip[1]);
+				ImGui::Text("Clipping Z");
+				ImGui::SliderFloat("Min Z", &er::app_state::get().cur_min_clip[2], er::app_state::get().min_clip[2], er::app_state::get().max_clip[2]);
+				ImGui::SliderFloat("Max Z", &er::app_state::get().cur_max_clip[2], er::app_state::get().min_clip[2], er::app_state::get().max_clip[2]);
 
-			ImGui::Text("Point Scale");
-			ImGui::SliderFloat("scale", &er::app_state::get().point_scale, 0.005f, 0.2f);
-			ImGui::End();
+				ImGui::Text("Clipping Y");
+				ImGui::SliderFloat("clipping Y", &er::app_state::get().cur_max_clip[1], er::app_state::get().min_clip[1], er::app_state::get().max_clip[1]);
+
+				ImGui::Text("Point Scale");
+				ImGui::SliderFloat("scale", &er::app_state::get().point_scale, 0.005f, 0.2f);
+
+				if (ImGui::Checkbox("Show IR data", &er::app_state::get().show_ir_only_data)) {
+					er::app_state::get().invalidate_ui = true;
+					printf(" Show IR data \n");
+				};
+
+				ImGui::Separator();
+				if (er::app_state::get().playing)
+					ImGui::Checkbox("Playing", &er::app_state::get().playing);
+				else
+					ImGui::Checkbox("Pause", &er::app_state::get().playing);
+
+				ImGui::End();
+			}
+
+			{
+				ImGui::Begin("Debug Ground", nullptr, flags);
+				ImGui::Text("Rotation");
+				ImGui::Checkbox("Override", &er::app_state::get().bool_override_rotation);
+				ImGui::SliderFloat("RotX", &er::app_state::get().rot_x, -2 * M_PI, 2 * M_PI);
+				ImGui::SliderFloat("RotY", &er::app_state::get().rot_y, -2 * M_PI, 2 * M_PI);
+				ImGui::SliderFloat("RotZ", &er::app_state::get().rot_z, -2 * M_PI, 2 * M_PI);
+				ImGui::Checkbox("Traslate", &er::app_state::get().bool_traslate);
+				ImGui::End();
+			}
 		}
 
 		{
@@ -145,46 +171,39 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				printf(" Show plants\n");
 			}
 
-			if (ImGui::Checkbox("Extract plants", &er::app_state::get().bool_extract_plants))
-			{
+			if (ImGui::Checkbox("Extract plants", &er::app_state::get().bool_extract_plants)) {
 				er::app_state::get().invalidate_ui = true;
 				printf(" Extract plants\n");
 			};
 
 			ImGui::Separator();
 
-			if (ImGui::Checkbox("BBX", &er::app_state::get().show_bbx))
-			{
+			if (ImGui::Checkbox("BBX", &er::app_state::get().show_bbx)) {
 				er::app_state::get().invalidate_ui = true;
 				printf(" Color cluster \n");
 			};
 
-			if (ImGui::Checkbox("Raw Cloud", &er::app_state::get().bool_cloud_raw))
-			{
+			if (ImGui::Checkbox("Raw Cloud", &er::app_state::get().bool_cloud_raw)) {
 				er::app_state::get().invalidate_ui = true;
 				printf(" Color cluster \n");
 			};
 
-			if (ImGui::Checkbox("Color cluster", &er::app_state::get().bool_color_cluster))
-			{
+			if (ImGui::Checkbox("Color cluster", &er::app_state::get().bool_color_cluster)) {
 				er::app_state::get().invalidate_ui = true;
 				printf(" Color cluster \n");
 			};
 
-			if (ImGui::Checkbox("Voxel Process", &er::app_state::get().bool_voxel_process))
-			{
+			if (ImGui::Checkbox("Voxel Process", &er::app_state::get().bool_voxel_process)) {
 				er::app_state::get().invalidate_ui = true;
 				printf(" Voxel Process \n");
 			};
 
-			if (ImGui::Checkbox("Distance Filter", &er::app_state::get().bool_distance_filter))
-			{
+			if (ImGui::Checkbox("Distance Filter", &er::app_state::get().bool_distance_filter)) {
 				er::app_state::get().invalidate_ui = true;
 				printf(" Distance filter \n");
 			};
 
-			if (ImGui::Checkbox("Ground plane", &er::app_state::get().show_ground_plane))
-			{
+			if (ImGui::Checkbox("Ground plane", &er::app_state::get().show_ground_plane)) {
 				er::app_state::get().invalidate_ui = true;
 				printf(" Show ground plane \n");
 			};
@@ -194,6 +213,7 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				printf(" Align ground \n");
 			};
 
+			/*
 			if (ImGui::Checkbox("Ground alignment X", &er::app_state::get().ground_alignment_x)) {
 				er::app_state::get().invalidate_ui = true;
 				printf(" Align ground X \n");
@@ -203,22 +223,12 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				er::app_state::get().invalidate_ui = true;
 				printf(" Align ground Y \n");
 			};
+			*/
 
 			if (ImGui::Checkbox("Show floor", &er::app_state::get().show_floor)) {
 				er::app_state::get().invalidate_ui = true;
 				printf(" Show floor \n");
 			};
-
-			if (ImGui::Checkbox("Show IR data", &er::app_state::get().show_ir_only_data)) {
-				er::app_state::get().invalidate_ui = true;
-				printf(" Show IR data \n");
-			};
-
-			ImGui::Separator();
-			if (er::app_state::get().playing)
-				ImGui::Checkbox("Playing", &er::app_state::get().playing);
-			else
-				ImGui::Checkbox("Pause", &er::app_state::get().playing);
 
 			ImGui::Separator();
 			ImGui::Text("-- Cloud --");

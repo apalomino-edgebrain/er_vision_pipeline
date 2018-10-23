@@ -93,67 +93,89 @@ bool ground_filter::process()
 	pass.setFilterLimits(0, MAX_Z);
 	pass.filter(*cloud_out);
 
+#define Z_POS 2.5
+
 	if (view != nullptr) {
 		view->invalidate_cloud(cloud_out);
 		if (view->V.size() > 0) {
-			auto bbx_m = view->V.colwise().minCoeff();
-			auto bbx_M = view->V.colwise().maxCoeff();
+			Eigen::Vector3d bbx_m;
+			Eigen::Vector3d bbx_M;
 
 			Eigen::RowVector3d N;
 			igl::fit_plane(view->V, N, plane_centre);
-
-			float y_min = bbx_m(1);
-			float z_min = bbx_m(2);
+			ground_plane = plane::fromPointNormal(plane_centre, N);
 
 			if (er::app_state::get().ground_alignment) {
-				Vec3 new_centre = Vec3(plane_centre(0),
-					plane_centre(1) - y_min,
-					plane_centre(2) - z_min);
+				//-------------------------------------------------------------
+				// https://en.wikipedia.org/wiki/Direction_cosine
+				// cos A = ax/|a|;   	cos B = ay/|a|;   	cos Y = az/|a|
 
-				ground_plane = plane::fromPointNormal(new_centre, N);
+				float dot = std::sqrt(ground_plane.a * ground_plane.a +
+					ground_plane.b * ground_plane.b +
+					ground_plane.c * ground_plane.c);
 
-				// Arbitrary point in the plane to get the angle
-#define Z_TEST 2.5
-				double y_pos = ground_plane.get_y(0, Z_TEST);
-				double angleInRadiansY = std::atan2(y_pos, Z_TEST);
-				if (!er::app_state::get().ground_alignment_y)
-					angleInRadiansY = 0;
+				float cosa = std::acos(ground_plane.a / dot) ;
+				cosa = - (cosa - M_PI / 2.0f);
 
-#define X_TEST 2.5
-				double angleInRadiansX = 0;
-				er::app_state::get().ground_alignment_x = false;
+				float cosb = std::acos(ground_plane.b / dot);
+				if (cosb > M_PI / 4.0f)
+					cosb = M_PI - cosb;
 
-/*
-				// TODO Rotate ground plane to fit the new orientation so
-				// we can orientate
-				double x_pos = ground_plane.get_y(X_TEST, 0);
-				double angleInRadiansX = std::atan2(X_TEST, x_pos);
-				if (!er::app_state::get().ground_alignment_x)
-					angleInRadiansX = 0;
-*/
-				//---------- Center in plane --------------------------------------
-				Tform3 T;
-				T = Tform3::Identity();
-				T.translate(Vec3(0,
-					-y_min,
-					-z_min));
+				float cosy = std::acos(ground_plane.c / dot);
 
-				Tform3 Y_Rot = Eigen::Affine3d(Eigen::AngleAxisd(angleInRadiansY, Eigen::Vector3d::UnitX()));
-				Tform3 X_Rot = Eigen::Affine3d(Eigen::AngleAxisd(angleInRadiansX, Eigen::Vector3d::UnitZ()));
+				if (er::app_state::get().bool_debug_verbose) {
+					std::cout << "-------------" << std::endl;
+					std::cout << "cosa = " << cosa * (360 / (2 * M_PI)) << std::endl;
+					std::cout << "cosb = " << cosb * (360 / (2 * M_PI)) << std::endl;
+					std::cout << "cosy = " << cosy * (360 / (2 * M_PI)) << std::endl;
+				}
 
-				Tform3 F = X_Rot * Y_Rot * T;
+				if (er::app_state::get().bool_override_rotation) {
+					cosa = er::app_state::get().rot_x;
+					cosb = er::app_state::get().rot_y;
+					cosy = er::app_state::get().rot_z;
+				} else {
+					er::app_state::get().rot_x = cosa;
+					er::app_state::get().rot_y = cosb;
+					er::app_state::get().rot_z = cosy;
+				}
 
-				for (int r = 0; r < view->V.rows(); r++) { // TODO: https://stackoverflow.com/questions/38841606/shorter-way-to-apply-transform-to-matrix-containing-vectors-in-eigen
-					Eigen::Vector3d v = view->V.row(r);    // Find how to do this properly
+				Tform3 X_Rot = Eigen::Affine3d(Eigen::AngleAxisd(cosa, Eigen::Vector3d::UnitZ()));
+				Tform3 Y_Rot = Eigen::Affine3d(Eigen::AngleAxisd(cosb, Eigen::Vector3d::UnitX()));
+
+				// TODO: Understand Z compensation, probably not required
+				//Tform3 Z_Rot = Eigen::Affine3d(Eigen::AngleAxisd(cosy, Eigen::Vector3d::UnitY()));
+
+				Tform3 T = Tform3::Identity();
+				Tform3 T2 = Tform3::Identity();
+
+				if (er::app_state::get().bool_traslate) {
+					T.translate(Vec3(-plane_centre(0), -plane_centre(1), -plane_centre(2)));
+					T2.translate(Vec3(0, 0, plane_centre(2) / 2));
+				}
+
+				//-------------------------------------------------------------
+
+				// TODO: https://stackoverflow.com/questions/38841606/shorter-way-to-apply-transform-to-matrix-containing-vectors-in-eigen
+				// Find how to do this properly
+
+				Tform3 F = T2 * Y_Rot * X_Rot * T;
+				for (int r = 0; r < view->V.rows(); r++) {
+					Eigen::Vector3d v = view->V.row(r);
 					v = F * v;
 					view->V.row(r) = v;
 				}
+
+				bbx_m = view->V.colwise().minCoeff();
+				bbx_M = view->V.colwise().maxCoeff();
+
 			} else {
-				ground_plane = plane::fromPointNormal(plane_centre, N);
+
 			}
 
-			view->bbx_m = view->V.colwise().minCoeff();
-			view->bbx_M = view->V.colwise().maxCoeff();
+			view->bbx_m = bbx_m = view->V.colwise().minCoeff();
+			view->bbx_M = bbx_M = view->V.colwise().maxCoeff();
+
 			//-----------------------------------------------------------------
 
 			V_box.resize(8, 3);
@@ -168,27 +190,39 @@ bool ground_filter::process()
 				bbx_m(0), bbx_M(1), bbx_M(2);
 
 			view->f_external_render = [&] (void *viewer_ptr) {
+				char text[256];
+
 				if (er::app_state::get().show_ground_plane) {
 					view->render_point(viewer_ptr, plane_centre,
-						Eigen::Vector3d { 1, 1,1 }, "Ground Centre");
+						Eigen::Vector3d { 1, 1, 1 }, "Ground Centre");
+
+					//---------------------------------------------------------
+					// Intersection with ground at 0 position to create a vector
+					Eigen::RowVector3d pos_intersection;
+
+					double z_pos = ground_plane.get_z(0, 0);
+					pos_intersection << 0, 0, z_pos;
+
+					sprintf(text, "Intersection [%2.2f]", z_pos);
+					view->render_point(viewer_ptr, pos_intersection,
+						Eigen::Vector3d { 0, 1, 0 }, text);
+
+					//---------------------------------------------------------
+
+					Eigen::RowVector3d pos;
+					double y_pos = ground_plane.get_y(0, Z_POS);
+					pos << 0, y_pos, Z_POS;
+
+					double angleInRadians = std::atan2(y_pos, Z_POS - z_pos);
+					double angleInDegrees = (angleInRadians / M_PI) * 180.0;
+
+					sprintf(text, "Angle [%2.2f]", angleInDegrees);
+					view->render_point(viewer_ptr, pos,
+						Eigen::Vector3d { 1, 1, 0 }, text);
 
 					view->render_plane(viewer_ptr, ground_plane,
 						view->bbx_m, view->bbx_M);
 
-					Eigen::RowVector3d pos;
-
-#define Z_POS 2.5
-					double y_pos = ground_plane.get_y(0, Z_POS);
-					pos << 0, y_pos, Z_POS;
-
-					double angleInRadians = std::atan2(y_pos, Z_POS);
-					double angleInDegrees = (angleInRadians / M_PI) * 180.0;
-
-					char text[256];
-					sprintf(text, "Angle [%2.2f]", angleInDegrees);
-
-					view->render_point(viewer_ptr, pos,
-						Eigen::Vector3d { 1, 1, 0 }, text);
 				}
 			};
 		}
