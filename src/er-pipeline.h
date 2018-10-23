@@ -165,6 +165,9 @@ namespace er {
 	class frame_data
 	{
 	public:
+		// Do we render this view on the screen?
+		volatile bool visible;
+
 		Eigen::Vector3d bbx_m;
 		Eigen::Vector3d bbx_M;
 

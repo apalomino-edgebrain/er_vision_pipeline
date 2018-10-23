@@ -48,7 +48,7 @@ er::worker_t viewer_thread;
 //#############################################################################
 
 er::frame_data::frame_data() : f_external_render { nullptr }, initialized { false },
-idx { 0 }, invalidate { false }
+visible { true }, idx { 0 }, invalidate { false }
 {
 	cloud = pcl_ptr(new pcl::PointCloud<pcl::PointXYZRGBA>);
 }
@@ -84,6 +84,9 @@ void er::frame_data::calculate_view()
 
 void er::frame_data::render(void *viewer_ptr)
 {
+	if (!visible)
+		return;
+
 	std::lock_guard<std::mutex> lock(mtx);
 	igl::opengl::glfw::Viewer *viewer = (igl::opengl::glfw::Viewer *) viewer_ptr;
 

@@ -199,6 +199,8 @@ bool ground_filter::process()
 				bbx_M(0), bbx_M(1), bbx_M(2),
 				bbx_m(0), bbx_M(1), bbx_M(2);
 
+			view->visible = er::app_state::get().show_ground;
+
 			view->f_external_render = [&] (void *viewer_ptr) {
 				char text[256];
 
