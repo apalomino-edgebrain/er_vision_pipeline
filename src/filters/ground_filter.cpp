@@ -49,10 +49,18 @@ using namespace er;
 //		2. No color, just ground
 //
 // Find the plane defined by the ground plane
+//
+// Adjust the plane to fit the current view using the Minimun coefficients
+// Find the angle X to align the plane on that axis
+// Find the angle Y to align the plane on that axis
+//
+// Create a transformation matrix to fit orientate the plane
+// Transfor every position to fit the new axis base.
 
-// Reduce floor cloud density with a voxelgrid
-// Raytrace points from floor grid up to find the right position in space
-// Classify between floor and plants
+// Next steps:
+//	Reduce floor cloud density with a voxelgrid
+//  Raytrace points from floor grid up to find the right position in space
+//  Classify between floor and plants
 
 bool ground_filter::process()
 {
@@ -91,31 +99,62 @@ bool ground_filter::process()
 			auto bbx_m = view->V.colwise().minCoeff();
 			auto bbx_M = view->V.colwise().maxCoeff();
 
-			//---------- Center in plane --------------------------------------
-			Tform3 T;
-			T = Tform3::Identity();
-			T.translate(Vec3(-(bbx_m(0) + bbx_M(0)) / 2,
-				-(bbx_m(1)),
-				-(bbx_m(2)) / 2));
+			Eigen::RowVector3d N;
+			igl::fit_plane(view->V, N, plane_centre);
 
-// TODO: https://stackoverflow.com/questions/38841606/shorter-way-to-apply-transform-to-matrix-containing-vectors-in-eigen
-// Find how to do this properly
+			float y_min = bbx_m(1);
+			float z_min = bbx_m(2);
 
-			for (int r = 0; r < view->V.rows(); r++) {
-				Eigen::Vector3d v = view->V.row(r);
-				v = T * v;
-				view->V.row(r) = v;
+			if (er::app_state::get().ground_alignment) {
+				Vec3 new_centre = Vec3(plane_centre(0),
+					plane_centre(1) - y_min,
+					plane_centre(2) - z_min);
+
+				ground_plane = plane::fromPointNormal(new_centre, N);
+
+				// Arbitrary point in the plane to get the angle
+#define Z_TEST 2.5
+				double y_pos = ground_plane.get_y(0, Z_TEST);
+				double angleInRadiansY = std::atan2(y_pos, Z_TEST);
+				if (!er::app_state::get().ground_alignment_y)
+					angleInRadiansY = 0;
+
+#define X_TEST 2.5
+				double angleInRadiansX = 0;
+				er::app_state::get().ground_alignment_x = false;
+
+/*
+				// TODO Rotate ground plane to fit the new orientation so
+				// we can orientate
+				double x_pos = ground_plane.get_y(X_TEST, 0);
+				double angleInRadiansX = std::atan2(X_TEST, x_pos);
+				if (!er::app_state::get().ground_alignment_x)
+					angleInRadiansX = 0;
+*/
+				//---------- Center in plane --------------------------------------
+				Tform3 T;
+				T = Tform3::Identity();
+				T.translate(Vec3(0,
+					-y_min,
+					-z_min));
+
+				Tform3 Y_Rot = Eigen::Affine3d(Eigen::AngleAxisd(angleInRadiansY, Eigen::Vector3d::UnitX()));
+				Tform3 X_Rot = Eigen::Affine3d(Eigen::AngleAxisd(angleInRadiansX, Eigen::Vector3d::UnitZ()));
+
+				Tform3 F = X_Rot * Y_Rot * T;
+
+				for (int r = 0; r < view->V.rows(); r++) { // TODO: https://stackoverflow.com/questions/38841606/shorter-way-to-apply-transform-to-matrix-containing-vectors-in-eigen
+					Eigen::Vector3d v = view->V.row(r);    // Find how to do this properly
+					v = F * v;
+					view->V.row(r) = v;
+				}
+			} else {
+				ground_plane = plane::fromPointNormal(plane_centre, N);
 			}
 
 			view->bbx_m = view->V.colwise().minCoeff();
 			view->bbx_M = view->V.colwise().maxCoeff();
-
-			#define Z_TEST 2.5
-			double y_pos = ground_plane.get_y(0, Z_TEST);
-			double angleInRadians = std::atan2(y_pos, Z_TEST);
-
-			Eigen::RowVector3d N;
-			igl::fit_plane(view->V, N, plane_centre);
+			//-----------------------------------------------------------------
 
 			V_box.resize(8, 3);
 			V_box <<
@@ -128,10 +167,6 @@ bool ground_filter::process()
 				bbx_M(0), bbx_M(1), bbx_M(2),
 				bbx_m(0), bbx_M(1), bbx_M(2);
 
-			// Plane
-			// Ax + By + Cz = D;
-			ground_plane = plane::fromPointNormal(plane_centre, N);
-
 			view->f_external_render = [&] (void *viewer_ptr) {
 				if (er::app_state::get().show_ground_plane) {
 					view->render_point(viewer_ptr, plane_centre,
@@ -142,7 +177,7 @@ bool ground_filter::process()
 
 					Eigen::RowVector3d pos;
 
-					#define Z_POS 2.5
+#define Z_POS 2.5
 					double y_pos = ground_plane.get_y(0, Z_POS);
 					pos << 0, y_pos, Z_POS;
 
@@ -153,7 +188,7 @@ bool ground_filter::process()
 					sprintf(text, "Angle [%2.2f]", angleInDegrees);
 
 					view->render_point(viewer_ptr, pos,
-						Eigen::Vector3d{ 1, 1, 0 }, text);
+						Eigen::Vector3d { 1, 1, 0 }, text);
 				}
 			};
 		}

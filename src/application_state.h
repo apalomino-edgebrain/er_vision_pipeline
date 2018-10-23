@@ -58,6 +58,7 @@ namespace er {
 		bool show_plants = true;
 		bool show_ir_only_data = true;
 		bool show_ground_plane = false;
+		bool show_floor = true;
 
 		bool show_bbx = true;
 
@@ -68,6 +69,11 @@ namespace er {
 
 		bool bool_tint_nvdi = true;
 		bool bool_tint_ir = true;
+
+		// Aligns the ground with our unit Axis
+		bool ground_alignment = true;
+		bool ground_alignment_x = true;
+		bool ground_alignment_y = true;
 
 		float min_nvdi = 1;
 		float cur_nvdi = -1;

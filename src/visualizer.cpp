@@ -362,11 +362,11 @@ void er::worker_t::start()
 		Eigen::VectorXd radius(V.rows());
 		radius.setConstant(0.01 * viewer.core.camera_base_zoom);
 
-		Eigen::VectorXd Z = V.col(2);
-		igl::jet(Z, true, C);
+		//Eigen::VectorXd Z = V.col(2);
+		//igl::jet(Z, true, C);
 
 		viewer.data().set_mesh(V, F);
-		viewer.data().set_colors(C);
+		//viewer.data().set_colors(C);
 		viewer.append_mesh();
 	}
 

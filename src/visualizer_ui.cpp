@@ -189,6 +189,26 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				printf(" Show ground plane \n");
 			};
 
+			if (ImGui::Checkbox("Ground alignment", &er::app_state::get().ground_alignment)) {
+				er::app_state::get().invalidate_ui = true;
+				printf(" Align ground \n");
+			};
+
+			if (ImGui::Checkbox("Ground alignment X", &er::app_state::get().ground_alignment_x)) {
+				er::app_state::get().invalidate_ui = true;
+				printf(" Align ground X \n");
+			};
+
+			if (ImGui::Checkbox("Ground alignment Y", &er::app_state::get().ground_alignment_y)) {
+				er::app_state::get().invalidate_ui = true;
+				printf(" Align ground Y \n");
+			};
+
+			if (ImGui::Checkbox("Show floor", &er::app_state::get().show_floor)) {
+				er::app_state::get().invalidate_ui = true;
+				printf(" Show floor \n");
+			};
+
 			if (ImGui::Checkbox("Show IR data", &er::app_state::get().show_ir_only_data)) {
 				er::app_state::get().invalidate_ui = true;
 				printf(" Show IR data \n");
