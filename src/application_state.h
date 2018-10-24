@@ -33,11 +33,6 @@ namespace er {
 		app_state();
         ~app_state();
 
-        // Loads the application configuration.
-		// Here we specify if we have a frontend or not.
-
-        void load_configuration(std::string json_configuration_file);
-
 		// Returns a singleton containing the application state.
 		static app_state &get()
 		{
@@ -46,7 +41,25 @@ namespace er {
 		}
 
 		//-----------------------------------------------
+        // Loads the application configuration.
+		// Here we specify if we have a frontend or not.
+
+		std::string json_configuration_file_path_;
+
+        void load_configuration(std::string json_configuration_file_path_);
+		void save_configuration();
+
+		bool invalidate_playback = false;
+		std::string capture_folder;
+		std::string capture_bag;
+
+		void set_current_file(std::string filepath_playback);
+
+		//-----------------------------------------------
 		// UI API
+
+		bool show_app_console = false;
+		bool show_app_log = false;
 
 		bool bool_debug_verbose = false;
 
@@ -59,7 +72,7 @@ namespace er {
 		bool show_ground = true;
 		bool show_plants = true;
 		bool show_ir_only_data = true;
-		bool show_ground_plane = true;
+		bool show_ground_plane = false;
 		bool show_floor = true;
 
 		bool show_bbx = true;

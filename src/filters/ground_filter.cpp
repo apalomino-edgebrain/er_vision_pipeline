@@ -65,43 +65,18 @@ using namespace er;
 //  Raytrace points from floor grid up to find the right position in space
 //  Classify between floor and plants
 
-/*
-void find_boundaries(Eigen::MatrixXd &V,
-	Eigen::Vector3d &top_left,
-	Eigen::Vector3d &top_right,
-	Eigen::Vector3d &bottom_left,
-	Eigen::Vector3d &bottom_right)
-{
-	Eigen::Vector3d bbx_m;
-	Eigen::Vector3d bbx_M;
-
-	bbx_m = V.colwise().minCoeff();
-	bbx_M = V.colwise().maxCoeff();
-
-	bottom_left = { bbx_M(0), bbx_M(1), bbx_M(2) };
-	for (int r = 0; r < V.rows(); r++) {
-		Eigen::Vector3d v = V.row(r);
-
-		if (v.y() < bottom_left.y()) {
-			bottom_left = v;
-		} else
-		if (v.y() == bottom_left.y()) {
-			if (v.x() < bottom_left.x()) {
-				bottom_left = v;
-			}
-		}
-	}
-}
-*/
-
 bool ground_filter::process()
 {
 	if (cloud_out == nullptr) {
 		pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
 		cloud_out = cloud;
+
+		pcl_ptr cloud_tmp(new pcl::PointCloud<pcl::PointXYZRGBA>);
+		cloud_render = cloud_tmp;
 	} else {
 		// TODO: Do not clear and reuse points
 		cloud_out->clear();
+		cloud_render->clear();
 	}
 
 	Eigen::RowVector3d cp;
@@ -112,18 +87,23 @@ bool ground_filter::process()
 		if (p.r + p.g + p.b > MAX_LUMINOSITY) {
 			add_point = false;
 		} else
-		if (p.a > IR) {
-			add_point = false;
-		} else {
-			float nvdi = float(p.a - p.r) / (p.a + p.r);
-
-			if (nvdi > NVDI) {
+			if (p.a > IR) {
 				add_point = false;
+			} else {
+				float nvdi = float(p.a - p.r) / (p.a + p.r);
+
+				if (nvdi > NVDI) {
+					add_point = false;
+				}
+			}
+
+		if (p.z >= 0.01f) {
+			if (add_point) {
+				cloud_render->points.push_back(p);
+			} else {
+				cloud_out->points.push_back(p);
 			}
 		}
-
-		if (add_point && p.z >= 0.01f)
-			cloud_out->points.push_back(p);
 	}
 
 	pcl::PassThrough<pcl::PointXYZRGBA> pass;
@@ -133,9 +113,11 @@ bool ground_filter::process()
 	pass.filter(*cloud_out);
 
 #define Z_POS 2.5
+	bool sanity_check = false;
+	is_ground_transform = false;
 
 	if (view != nullptr) {
-		view->invalidate_cloud(cloud_out);
+		view->invalidate_cloud(cloud_render);
 		if (view->V.size() > 0) {
 			Eigen::Vector3d bbx_m;
 			Eigen::Vector3d bbx_M;
@@ -155,22 +137,44 @@ bool ground_filter::process()
 				ground_plane.b * ground_plane.b +
 				ground_plane.c * ground_plane.c);
 
+			float cosy = std::acos(ground_plane.c / dot);
+			if (cosy > M_PI / 2.0f)
+				cosy = M_PI - cosy;
+			/*
+			if (cosy > 1.0f) {
+				std::cout << " Reverse normal" << std::endl;
+				ground_plane.a = -ground_plane.a;
+				ground_plane.b = -ground_plane.b;
+				ground_plane.c = -ground_plane.c;
+			}
+			*/
+
 			float cosa = std::acos(ground_plane.a / dot);
-			cosa = - (cosa - M_PI / 2.0f);
+			cosa = -(cosa - M_PI / 2.0f);
 
 			float cosb = std::acos(ground_plane.b / dot);
 			if (cosb > M_PI / 2.0f)
 				cosb = M_PI - cosb;
-
-			float cosy = std::acos(ground_plane.c / dot);
-			if (cosy > M_PI / 2.0f)
-				cosy = M_PI - cosb;
 
 			if (er::app_state::get().bool_debug_verbose) {
 				std::cout << "-------------" << std::endl;
 				std::cout << "cosa = " << cosa * (360 / (2 * M_PI)) << std::endl;
 				std::cout << "cosb = " << cosb * (360 / (2 * M_PI)) << std::endl;
 				std::cout << "cosy = " << cosy * (360 / (2 * M_PI)) << std::endl;
+			}
+
+			if (cosa < 0)
+				cosa = -cosa;
+
+			sanity_check = true;
+			if (cosa > M_PI / 4.0f && cosa < -M_PI / 4.0f) {
+				std::cout << "Out of range on COSA calculation" << std::endl;
+				sanity_check = false;
+			}
+
+			if (cosb > M_PI / 4.0f && cosb < -M_PI / 4.0f) {
+				std::cout << "Out of range on COSB calculation" << std::endl;
+				sanity_check = false;
 			}
 
 			if (er::app_state::get().bool_override_rotation) {
@@ -197,21 +201,32 @@ bool ground_filter::process()
 
 			//-------------------------------------------------------------
 
+			Tform3 F = T2 * Z_Rot * X_Rot * Y_Rot * T;
+
+			// TODO: Check if transformation is valid
+
+			if (sanity_check) {
+				is_ground_transform = true;
+				ground_transform = F;
+			} else {
+				if (is_ground_transform) {
+					std::cout << "Warning, failed calculating ground transform" << std::endl;
+				}
+				is_ground_transform = false;
+			}
+
 			// TODO: https://stackoverflow.com/questions/38841606/shorter-way-to-apply-transform-to-matrix-containing-vectors-in-eigen
 			// Find how to do this properly
 
 			if (er::app_state::get().ground_alignment) {
-
-				Tform3 F = T2 * Y_Rot * X_Rot * Z_Rot * T;
 				for (int r = 0; r < view->V.rows(); r++) {
 					Eigen::Vector3d v = view->V.row(r);
-					v = F * v;
+					v = ground_transform * v;
 					view->V.row(r) = v;
 				}
 
 				bbx_m = view->V.colwise().minCoeff();
 				bbx_M = view->V.colwise().maxCoeff();
-
 			} else {
 
 			}
@@ -270,8 +285,13 @@ bool ground_filter::process()
 
 				}
 			};
+
+			if (f_callback_output != nullptr)
+				f_callback_output(cloud_out);
 		}
 	}
+
+
 	return true;
 }
 

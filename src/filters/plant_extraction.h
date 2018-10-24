@@ -20,38 +20,25 @@
 							`-+shdNMMMMMMMNmdyo/.
 									`````*/
 //#############################################################################
-// Filter to extract the ground and detect the orientation of the floor
+// Filter to extract the ground information
 //#############################################################################
 
-#ifndef ground_filter_H_
-#define ground_filter_H_
+#ifndef plant_extraction_filter_H_
+#define plant_extraction_filter_H_
 
 #include "../er-pipeline.h"
 #include "../algebra/plane.h"
 
 namespace er {
-	class ground_filter : public process_unit
+	class plants_filter: public process_unit
 	{
 	public:
-		pcl_ptr cloud_render;
+		ground_filter *grnd_filter;
 
-		plane ground_plane;
-		Eigen::RowVector3d plane_centre;
-		Eigen::MatrixXd V_box;
+		plants_filter(): grnd_filter { nullptr } {};
+		~plants_filter() {};
 
-		Eigen::Vector3d top_left = { 0, 0, 0 };
-		Eigen::Vector3d top_right = { 0, 0, 0 };
-		Eigen::Vector3d bottom_left = { 0, 0, 0 };
-		Eigen::Vector3d bottom_right = { 0, 0, 0 };
-
-		// Here we define the current frame ground transformation for
-		// other processes to align their views after their operations.
-
-		bool is_ground_transform;
-		Eigen::Transform<double, 3, Eigen::Affine> ground_transform;
-
-		ground_filter() {};
-		~ground_filter() {};
+		void set_ground_filter(ground_filter *grnd_filter_);
 		bool process() override;
 		void invalidate_view() override;
 	};

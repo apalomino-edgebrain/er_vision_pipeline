@@ -359,7 +359,16 @@ int main(int argc, char * argv[]) try {
 		cfg.enable_device_from_file(file_record);
 
 		printf_h1("Loading %s ", file_record);
+
+		er::app_state::get().set_current_file(file_record);
+		er::app_state::get().invalidate_playback = false;
 		read_file = true;
+	} else {
+		std::cout << "TODO: Ask for a file!" << std::endl;
+		//std::string fname = igl::file_dialog_open();
+
+		//if (fname.length() == 0)
+		//	return;
 	}
 
 	Eigen::initParallel();
@@ -409,7 +418,7 @@ int main(int argc, char * argv[]) try {
 	er::pipeline er_pipe;
 
 	if (read_file)
-		er_pipe.initialize_folder(file_record);
+		er_pipe.initialize_folder(er::app_state::get().capture_folder);
 
 	bool playing_state = true;
 
@@ -417,6 +426,19 @@ int main(int argc, char * argv[]) try {
 	{
 		// Wait for the next set of frames from the camera
 		rs2::playback playback = device.as<rs2::playback>();
+
+		if (er::app_state::get().invalidate_playback) {
+			std::cout << "Invalidate playback " << std::endl;
+
+			pipe->stop(); // Stop the pipeline with the default configuration
+			pipe = std::make_shared<rs2::pipeline>();
+
+			rs2::config cfg; // Declare a new configuration
+			cfg.enable_device_from_file(er::app_state::get().capture_bag);
+			pipe->start(cfg); //File will be opened at this point
+			device = pipe->get_active_profile().get_device();
+			er::app_state::get().invalidate_playback = false;
+		}
 
 		if (playing_state != er::app_state::get().playing) {
 			playback.resume();
@@ -704,61 +726,6 @@ int main(int argc, char * argv[]) try {
 		}
 
 		draw_pointcloud(app, app_state, layers);
-		//draw_polygons(app, app_state);
-
-#ifdef REALSENSE_USE_IMGUI
-		static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
-		ImGui_ImplGlfwGL2_NewFrame();
-
-		ImGui::SetNextWindowSize({ 300, 100 });
-
-		{
-			ImGui::Begin("app", nullptr, flags);
-			ImGui::Text("Color Spaces");
-			ImGui::Checkbox("Show nvdi", &bool_tint_nvdi);
-			ImGui::SliderFloat("NVDI", &cur_nvdi, min_nvdi, max_nvdi);
-
-			ImGui::Checkbox("Show ir", &bool_tint_ir);
-			ImGui::SliderFloat("IR", &cur_ir, min_ir, max_ir);
-			//ImGui::SliderFloat("HSV", &cur_nvdi, min_nvdi, max_nvdi);
-
-			ImGui::Text("Clipping Z");
-			ImGui::SliderFloat("Min Z", &cur_min_clip[2], min_clip[2], max_clip[2]);
-			ImGui::SliderFloat("Max Z", &cur_max_clip[2], min_clip[2], max_clip[2]);
-
-			ImGui::Text("Clipping Y");
-			ImGui::SliderFloat("clipping Y", &cur_max_clip[1], min_clip[1], max_clip[1]);
-			ImGui::End();
-		}
-
-		{
-			ImGui::Begin("Analysis", &show_analysis, flags);
-			ImGui::Checkbox("Show ground", &show_ground);
-			ImGui::Checkbox("Show plants", &show_plants);
-			ImGui::Checkbox("Extract plants", &bool_extract_plants);
-			ImGui::Separator();
-
-			ImGui::Checkbox("Raw Cloud", &bool_cloud_raw);
-			ImGui::Checkbox("Color cluster", &bool_color_cluster);
-			ImGui::Checkbox("Voxel Process", &bool_voxel_process);
-			ImGui::Checkbox("Distance Filter", &bool_distance_filter);
-
-			ImGui::Separator();
-			if (playing)
-				ImGui::Checkbox("Playing", &playing);
-			else
-				ImGui::Checkbox("Pause", &playing);
-
-			ImGui::Separator();
-			ImGui::Text("-- Cloud --");
-			ImGui::Text("Raw %d", cloud_raw->points.size());
-			ImGui::Text("Process %d", cloud->points.size());
-
-			ImGui::End();
-		}
-
-		ImGui::Render();
-#endif
 	}
 
 	return EXIT_SUCCESS;

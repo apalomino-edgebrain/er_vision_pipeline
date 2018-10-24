@@ -196,8 +196,10 @@ void er::frame_data::render_plane(void *viewer_ptr,
 		m(0), p.get_y(m(0), M(2)), M(2),
 		M(0), p.get_y(M(0), M(2)), M(2);
 
-	std::cout << "-------" << std::endl;
-	std::cout << V << std::endl;
+	if (er::app_state::get().bool_debug_verbose) {
+		std::cout << "-- Render Plane --" << std::endl;
+		std::cout << V << std::endl;
+	}
 
 	Eigen::MatrixXi F(2, 3);
 	F <<

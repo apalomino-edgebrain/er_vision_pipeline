@@ -29,6 +29,7 @@
 #include "er-pipeline.h"
 
 #include "filters/ground_filter.h"
+#include "filters/plant_extraction.h"
 
 //-----------------------------------------------------------------------------
 // STD
@@ -47,12 +48,21 @@ using namespace boost::filesystem;
 er::pipeline::pipeline()
 {
     printf("+ Initialize pipeline\n");
-	process_units["ground"] = new er::ground_filter();
+
+	er::ground_filter *ground = new er::ground_filter();
+
+	er::plants_filter *plants = new er::plants_filter();
+
+	ground->f_callback_output = std::bind(&plants_filter::input, plants, std::placeholders::_1);
+	plants->set_ground_filter(ground);
+
+	process_units["ground"] = ground;
+	process_units["plant_extraction"] = plants;
 }
 
 er::pipeline::~pipeline()
 {
-
+	// TODO: Delete the process_units
 }
 
 void er::pipeline::preconfigure_process_units(std::string process_units_path)

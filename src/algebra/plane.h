@@ -1,5 +1,8 @@
 #include <Eigen/Core>
 
+#ifndef _ER_PLANE_H_
+#define _ER_PLANE_H_
+
 struct line3d
 {
 	line3d() {}
@@ -104,3 +107,5 @@ struct plane
 
 	float a, b, c, d;        //the (a, b, c, d) in a*x + b*y + c*z + d = 0.
 };
+
+#endif
