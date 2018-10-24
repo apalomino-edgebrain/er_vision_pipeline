@@ -37,6 +37,11 @@ namespace er {
 		Eigen::RowVector3d plane_centre;
 		Eigen::MatrixXd V_box;
 
+		Eigen::Vector3d top_left = { 0, 0, 0 };
+		Eigen::Vector3d top_right = { 0, 0, 0 };
+		Eigen::Vector3d bottom_left = { 0, 0, 0 };
+		Eigen::Vector3d bottom_right = { 0, 0, 0 };
+
 		ground_filter() {};
 		~ground_filter() {};
 		bool process() override;

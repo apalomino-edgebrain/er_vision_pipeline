@@ -56,10 +56,10 @@ namespace er {
 
 		bool show_analysis = true;
 
-		bool show_ground = false;
+		bool show_ground = true;
 		bool show_plants = true;
 		bool show_ir_only_data = true;
-		bool show_ground_plane = false;
+		bool show_ground_plane = true;
 		bool show_floor = true;
 
 		bool show_bbx = true;

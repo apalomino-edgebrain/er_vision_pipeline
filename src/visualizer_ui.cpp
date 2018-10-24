@@ -143,6 +143,7 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				else
 					ImGui::Checkbox("Pause", &er::app_state::get().playing);
 
+				ImGui::Checkbox("Debug", &er::app_state::get().bool_debug_verbose);
 				ImGui::End();
 			}
 
@@ -153,6 +154,12 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				ImGui::SliderFloat("RotX", &er::app_state::get().rot_x, -2 * M_PI, 2 * M_PI);
 				ImGui::SliderFloat("RotY", &er::app_state::get().rot_y, -2 * M_PI, 2 * M_PI);
 				ImGui::SliderFloat("RotZ", &er::app_state::get().rot_z, -2 * M_PI, 2 * M_PI);
+
+				ImGui::Text("Degree");
+				ImGui::SameLine(100); ImGui::Text("%2.2f", er::app_state::get().rot_x * 360 / (2 * M_PI));
+				ImGui::SameLine(150); ImGui::Text("%2.2f", er::app_state::get().rot_y * 360 / (2 * M_PI));
+				ImGui::SameLine(200); ImGui::Text("%2.2f", er::app_state::get().rot_z * 360 / (2 * M_PI));
+
 				ImGui::Checkbox("Traslate", &er::app_state::get().bool_traslate);
 				ImGui::End();
 			}

@@ -65,6 +65,35 @@ using namespace er;
 //  Raytrace points from floor grid up to find the right position in space
 //  Classify between floor and plants
 
+/*
+void find_boundaries(Eigen::MatrixXd &V,
+	Eigen::Vector3d &top_left,
+	Eigen::Vector3d &top_right,
+	Eigen::Vector3d &bottom_left,
+	Eigen::Vector3d &bottom_right)
+{
+	Eigen::Vector3d bbx_m;
+	Eigen::Vector3d bbx_M;
+
+	bbx_m = V.colwise().minCoeff();
+	bbx_M = V.colwise().maxCoeff();
+
+	bottom_left = { bbx_M(0), bbx_M(1), bbx_M(2) };
+	for (int r = 0; r < V.rows(); r++) {
+		Eigen::Vector3d v = V.row(r);
+
+		if (v.y() < bottom_left.y()) {
+			bottom_left = v;
+		} else
+		if (v.y() == bottom_left.y()) {
+			if (v.x() < bottom_left.x()) {
+				bottom_left = v;
+			}
+		}
+	}
+}
+*/
+
 bool ground_filter::process()
 {
 	if (cloud_out == nullptr) {
@@ -113,63 +142,67 @@ bool ground_filter::process()
 
 			Eigen::RowVector3d N;
 			igl::fit_plane(view->V, N, plane_centre);
+
 			ground_plane = plane::fromPointNormal(plane_centre, N);
 
+			//-------------------------------------------------------------
+			// https://en.wikipedia.org/wiki/Direction_cosine
+			// cos A = ax/|a|;   	cos B = ay/|a|;   	cos Y = az/|a|
+
+			plane new_plane = plane::fromPointNormal(plane_centre, N);
+
+			float dot = std::sqrt(ground_plane.a * ground_plane.a +
+				ground_plane.b * ground_plane.b +
+				ground_plane.c * ground_plane.c);
+
+			float cosa = std::acos(ground_plane.a / dot);
+			cosa = - (cosa - M_PI / 2.0f);
+
+			float cosb = std::acos(ground_plane.b / dot);
+			if (cosb > M_PI / 2.0f)
+				cosb = M_PI - cosb;
+
+			float cosy = std::acos(ground_plane.c / dot);
+			if (cosy > M_PI / 2.0f)
+				cosy = M_PI - cosb;
+
+			if (er::app_state::get().bool_debug_verbose) {
+				std::cout << "-------------" << std::endl;
+				std::cout << "cosa = " << cosa * (360 / (2 * M_PI)) << std::endl;
+				std::cout << "cosb = " << cosb * (360 / (2 * M_PI)) << std::endl;
+				std::cout << "cosy = " << cosy * (360 / (2 * M_PI)) << std::endl;
+			}
+
+			if (er::app_state::get().bool_override_rotation) {
+				cosa = er::app_state::get().rot_x;
+				cosb = er::app_state::get().rot_y;
+				cosy = er::app_state::get().rot_z;
+			} else {
+				er::app_state::get().rot_x = cosa;
+				er::app_state::get().rot_y = cosb;
+				er::app_state::get().rot_z = cosy;
+			}
+
+			Tform3 X_Rot = Eigen::Affine3d(Eigen::AngleAxisd(cosa, Eigen::Vector3d::UnitZ()));
+			Tform3 Y_Rot = Eigen::Affine3d(Eigen::AngleAxisd(cosb, Eigen::Vector3d::UnitX()));
+			Tform3 Z_Rot = Eigen::Affine3d(Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()));
+
+			Tform3 T = Tform3::Identity();
+			Tform3 T2 = Tform3::Identity();
+
+			if (er::app_state::get().bool_traslate) {
+				T.translate(Vec3(-plane_centre(0), -plane_centre(1), -plane_centre(2)));
+				T2.translate(Vec3(0, 0, plane_centre(2) / 2));
+			}
+
+			//-------------------------------------------------------------
+
+			// TODO: https://stackoverflow.com/questions/38841606/shorter-way-to-apply-transform-to-matrix-containing-vectors-in-eigen
+			// Find how to do this properly
+
 			if (er::app_state::get().ground_alignment) {
-				//-------------------------------------------------------------
-				// https://en.wikipedia.org/wiki/Direction_cosine
-				// cos A = ax/|a|;   	cos B = ay/|a|;   	cos Y = az/|a|
 
-				float dot = std::sqrt(ground_plane.a * ground_plane.a +
-					ground_plane.b * ground_plane.b +
-					ground_plane.c * ground_plane.c);
-
-				float cosa = std::acos(ground_plane.a / dot) ;
-				cosa = - (cosa - M_PI / 2.0f);
-
-				float cosb = std::acos(ground_plane.b / dot);
-				if (cosb > M_PI / 4.0f)
-					cosb = M_PI - cosb;
-
-				float cosy = std::acos(ground_plane.c / dot);
-
-				if (er::app_state::get().bool_debug_verbose) {
-					std::cout << "-------------" << std::endl;
-					std::cout << "cosa = " << cosa * (360 / (2 * M_PI)) << std::endl;
-					std::cout << "cosb = " << cosb * (360 / (2 * M_PI)) << std::endl;
-					std::cout << "cosy = " << cosy * (360 / (2 * M_PI)) << std::endl;
-				}
-
-				if (er::app_state::get().bool_override_rotation) {
-					cosa = er::app_state::get().rot_x;
-					cosb = er::app_state::get().rot_y;
-					cosy = er::app_state::get().rot_z;
-				} else {
-					er::app_state::get().rot_x = cosa;
-					er::app_state::get().rot_y = cosb;
-					er::app_state::get().rot_z = cosy;
-				}
-
-				Tform3 X_Rot = Eigen::Affine3d(Eigen::AngleAxisd(cosa, Eigen::Vector3d::UnitZ()));
-				Tform3 Y_Rot = Eigen::Affine3d(Eigen::AngleAxisd(cosb, Eigen::Vector3d::UnitX()));
-
-				// TODO: Understand Z compensation, probably not required
-				//Tform3 Z_Rot = Eigen::Affine3d(Eigen::AngleAxisd(cosy, Eigen::Vector3d::UnitY()));
-
-				Tform3 T = Tform3::Identity();
-				Tform3 T2 = Tform3::Identity();
-
-				if (er::app_state::get().bool_traslate) {
-					T.translate(Vec3(-plane_centre(0), -plane_centre(1), -plane_centre(2)));
-					T2.translate(Vec3(0, 0, plane_centre(2) / 2));
-				}
-
-				//-------------------------------------------------------------
-
-				// TODO: https://stackoverflow.com/questions/38841606/shorter-way-to-apply-transform-to-matrix-containing-vectors-in-eigen
-				// Find how to do this properly
-
-				Tform3 F = T2 * Y_Rot * X_Rot * T;
+				Tform3 F = T2 * Y_Rot * X_Rot * Z_Rot * T;
 				for (int r = 0; r < view->V.rows(); r++) {
 					Eigen::Vector3d v = view->V.row(r);
 					v = F * v;
