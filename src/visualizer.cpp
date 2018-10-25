@@ -66,7 +66,7 @@ void er::frame_data::calculate_view()
 
 		//printf(" %2.2f, %2.2f, %2.2f ", p.x, p.y, p.z);
 		V(i, 0) = p.x;
-		V(i, 1) = -p.y;
+		V(i, 1) = p.y;
 		V(i, 2) = p.z;
 
 		C(i, 0) = p.r / 255.f;

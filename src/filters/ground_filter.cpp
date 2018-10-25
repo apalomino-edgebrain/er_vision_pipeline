@@ -152,7 +152,7 @@ bool ground_filter::process()
 			*/
 
 			float cosa = std::acos(ground_plane.a / dot);
-			cosa = -(cosa - M_PI / 2.0f);
+			cosa = (cosa - M_PI / 2.0f);
 
 			float cosb = std::acos(ground_plane.b / dot);
 			if (cosb > M_PI / 2.0f)
@@ -165,7 +165,7 @@ bool ground_filter::process()
 				std::cout << "cosy = " << cosy * (360 / (2 * M_PI)) << std::endl;
 			}
 
-			if (cosa < 0)
+			if (cosa > 0)
 				cosa = 2 * M_PI - cosa;
 
 			sanity_check = true;

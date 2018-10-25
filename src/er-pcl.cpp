@@ -122,7 +122,7 @@ void draw_pointcloud(window& app, state& app_state, const std::vector<pcl_ptr>& 
 			if (p.z) {
 				// upload the point and texture coordinates only for points we have depth data for
 				glColor3f(float(p.r) / 255.f, float(p.g) / 255.f, float(p.b) / 255.f);
-				glVertex3f(p.x, p.y, p.z);
+				glVertex3f(p.x, -p.y, p.z);
 			}
 		}
 
@@ -494,7 +494,7 @@ int main(int argc, char * argv[]) try {
 					pcl::PointXYZRGBA p;
 
 					p.x = ptr->x;
-					p.y = ptr->y;
+					p.y = -ptr->y;
 					p.z = ptr->z;
 
 					//-- Z Clipping max and min values--
