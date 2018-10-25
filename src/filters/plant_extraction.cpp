@@ -58,7 +58,6 @@ void plants_filter::input_pcl(pcl_ptr cloud)
 
 bool plants_filter::process()
 {
-	printf(" Plants_filter: %p\n", this);
 	if (cloud_out == nullptr) {
 		pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
 		cloud_out = cloud;
@@ -67,47 +66,48 @@ bool plants_filter::process()
 		cloud_out->clear();
 	}
 
-	Eigen::Transform<double, 3, Eigen::Affine>
+	Eigen::Transform<double, 3, Eigen::Affine> ground_transform;
+	if (er::app_state::get().ground_alignment) {
 		ground_transform = grnd_filter->ground_transform;
-
-/*  In order to change keep orientation working we would have to render
+	} else {
+		ground_transform = Eigen::Affine3d::Identity();
+	}
 
 	pcl_ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZRGBA>());
 	pcl::transformPointCloud(*cloud_in, *transformed_cloud,
 		ground_transform.matrix());
-*/
-	for (auto& p : cloud_in->points) {
+
+	float plant_min_Z = er::app_state::get().plant_min_Z;
+	float plant_max_Z = er::app_state::get().plant_max_Z;
+	float plant_min_Y = er::app_state::get().plant_min_Y;
+	float plant_max_Y = er::app_state::get().plant_max_Y;
+
+	// Very basic removal of points based on distances, luminosity, etc.
+	for (auto& p : transformed_cloud->points) {
 		bool add_point = true;
 
-		if (p.r + p.g + p.b < MAX_LUMINOSITY) {
+		if (p.z < plant_min_Z || p.z > plant_max_Z) {
 			add_point = false;
 		} else
-		if (p.a < IR) {
-			add_point = false;
-		} else {
-			float nvdi = float(p.a - p.r) / (p.a + p.r);
-			if (nvdi < NVDI) {
+			if (p.y < plant_min_Y || p.y > plant_max_Y) {
 				add_point = false;
-			}
-		}
+			} else
+				if (p.r + p.g + p.b < MAX_LUMINOSITY) {
+					add_point = false;
+				} else
+					if (p.a < IR) {
+						add_point = false;
+					} else {
+						float nvdi = float(p.a - p.r) / (p.a + p.r);
+						if (nvdi < NVDI) {
+							add_point = false;
+						}
+					}
 
-		if (add_point && p.z >= MIN_Z)
+		if (add_point)
 			cloud_out->points.push_back(p);
 	}
 
-	if (view != nullptr) {
-		view->invalidate_cloud(cloud_out);
-
-		if (view->V.size() > 0) {
-			if (er::app_state::get().ground_alignment) {
-				for (int r = 0; r < view->V.rows(); r++) {
-					Eigen::Vector3d v = view->V.row(r);
-					v = ground_transform * v;
-					view->V.row(r) = v;
-				}
-			}
-		}
-	}
 	return true;
 }
 
@@ -118,5 +118,5 @@ void plants_filter::set_ground_filter(ground_filter *grnd_filter_)
 
 void plants_filter::invalidate_view()
 {
-
+	er::process_unit::invalidate_view();
 }

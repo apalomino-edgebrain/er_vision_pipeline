@@ -164,8 +164,8 @@ void draw_pointcloud(float width, float height, glfw_state& app_state, rs2::poin
 	gluLookAt(0, 0, 0, 0, 0, 1, 0, -1, 0);
 
 	glTranslatef(0, 0, +0.5f + app_state.offset_y*0.05f);
-	glRotated(app_state.pitch, 1, 0, 0);
-	glRotated(app_state.yaw, 0, 1, 0);
+	glRotated(app_state.pitch, -1, 0, 0);
+	glRotated(app_state.yaw, 0, -1, 0);
 	glTranslatef(0, 0, -0.5f);
 
 	glPointSize(width / 640);

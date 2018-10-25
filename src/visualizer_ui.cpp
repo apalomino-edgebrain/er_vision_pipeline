@@ -155,7 +155,7 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				ImGui::SliderFloat("clipping Y", &app_state::get().cur_max_clip[1], app_state::get().min_clip[1], app_state::get().max_clip[1]);
 
 				ImGui::Text("Point Scale");
-				ImGui::SliderFloat("scale", &app_state::get().point_scale, 0.005f, 0.2f);
+				ImGui::SliderFloat("scale", &app_state::get().point_scale, 0.001f, 0.02f);
 
 				if (ImGui::Checkbox("Show IR data", &app_state::get().show_ir_only_data)) {
 					app_state::get().invalidate_ui = true;
@@ -186,6 +186,20 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				ImGui::SameLine(200); ImGui::Text("%2.2f", app_state::get().rot_z * 360 / (2 * M_PI));
 
 				ImGui::Checkbox("Traslate", &app_state::get().bool_traslate);
+				ImGui::End();
+			}
+
+			{
+				ImGui::Begin("Plants View", nullptr, flags);
+
+				ImGui::Text("Clipping Z");
+				ImGui::SliderFloat("Min Z", &app_state::get().plant_min_Z, -0.1f, 3);
+				ImGui::SliderFloat("Max Z", &app_state::get().plant_max_Z, -0.1f, 3);
+
+				ImGui::Text("Clipping Y");
+				ImGui::SliderFloat("Min Y", &app_state::get().plant_min_Y, -0.1f, 1);
+				ImGui::SliderFloat("Max Y", &app_state::get().plant_max_Y, -0.1f, 1);
+
 				ImGui::End();
 			}
 		}

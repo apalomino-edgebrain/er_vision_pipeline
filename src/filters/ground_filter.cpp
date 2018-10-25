@@ -84,6 +84,7 @@ bool ground_filter::process()
 	for (auto& p : cloud_in->points) {
 		bool add_point = true;
 
+		// TODO Check why I invert this!?
 		p.x = -p.x;
 		if (p.r + p.g + p.b > MAX_LUMINOSITY) {
 			add_point = false;

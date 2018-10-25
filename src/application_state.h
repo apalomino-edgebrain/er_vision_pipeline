@@ -70,7 +70,7 @@ namespace er {
 
 		bool show_analysis = true;
 
-		bool show_ground = true;
+		bool show_ground = false;
 		bool show_plants = true;
 		bool show_ir_only_data = true;
 		bool show_ground_plane = false;
@@ -106,6 +106,15 @@ namespace er {
 
 		float min_clip[3] = { 0, 0, 50 };
 		float max_clip[3] = { 0, 50, -50 };
+
+		//-----------------------------------------------
+		// Plants distantances
+
+		float plant_min_Y = 0.05f;
+		float plant_max_Y = 0.250f;     // Max 1 meter
+
+		float plant_min_Z = 0;
+		float plant_max_Z = 3;
 
 		//-----------------------------------------------
 		float point_scale = 0.01f;
