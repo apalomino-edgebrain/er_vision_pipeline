@@ -47,13 +47,14 @@ using namespace boost::filesystem;
 
 er::pipeline::pipeline()
 {
+
     printf("+ Initialize pipeline\n");
 
 	er::ground_filter *ground = new er::ground_filter();
-
 	er::plants_filter *plants = new er::plants_filter();
 
-	ground->f_callback_output = std::bind(&plants_filter::input, plants, std::placeholders::_1);
+	auto F = std::bind(&er::plants_filter::input_pcl, plants, std::placeholders::_1);
+	ground->f_callback_output = F;
 	plants->set_ground_filter(ground);
 
 	process_units["ground"] = ground;
@@ -109,7 +110,7 @@ er::process_unit::~process_unit()
 
 }
 
-void er::process_unit::input(frame_2d type, void *color_frame)
+void er::process_unit::input_frame(frame_2d type, void *color_frame)
 {
 	// Check if the process was able to finish with this new information
 	if (!process()) {
@@ -133,7 +134,7 @@ bool er::process_unit::process()
 	return true;
 }
 
-void er::process_unit::input(pcl_ptr cloud)
+void er::process_unit::input_pcl(pcl_ptr cloud)
 {
 	cloud_in = cloud;
 
@@ -161,7 +162,7 @@ pcl_ptr er::process_unit::output(int id)
 void er::pipeline::process_frame(pcl_ptr cloud, std::vector<frame_data *> &data_views)
 {
 	process_unit *pu = process_units["ground"];
-	pu->input(cloud);
+	pu->input_pcl(cloud);
 
 	// Initialize the display frame buffers
 

@@ -84,6 +84,7 @@ bool ground_filter::process()
 	for (auto& p : cloud_in->points) {
 		bool add_point = true;
 
+		p.x = -p.x;
 		if (p.r + p.g + p.b > MAX_LUMINOSITY) {
 			add_point = false;
 		} else
@@ -138,9 +139,10 @@ bool ground_filter::process()
 				ground_plane.c * ground_plane.c);
 
 			float cosy = std::acos(ground_plane.c / dot);
+			/*
 			if (cosy > M_PI / 2.0f)
 				cosy = M_PI - cosy;
-			/*
+
 			if (cosy > 1.0f) {
 				std::cout << " Reverse normal" << std::endl;
 				ground_plane.a = -ground_plane.a;
@@ -164,7 +166,7 @@ bool ground_filter::process()
 			}
 
 			if (cosa < 0)
-				cosa = -cosa;
+				cosa = 2 * M_PI - cosa;
 
 			sanity_check = true;
 			if (cosa > M_PI / 4.0f && cosa < -M_PI / 4.0f) {
@@ -196,7 +198,7 @@ bool ground_filter::process()
 
 			if (er::app_state::get().bool_traslate) {
 				T.translate(Vec3(-plane_centre(0), -plane_centre(1), -plane_centre(2)));
-				T2.translate(Vec3(0, 0, plane_centre(2) / 2));
+				T2.translate(Vec3(plane_centre(0), 0, plane_centre(2) / 2));
 			}
 
 			//-------------------------------------------------------------
@@ -282,7 +284,6 @@ bool ground_filter::process()
 
 					view->render_plane(viewer_ptr, ground_plane,
 						view->bbx_m, view->bbx_M);
-
 				}
 			};
 
@@ -297,9 +298,4 @@ bool ground_filter::process()
 
 void ground_filter::invalidate_view()
 {
-	if (!visible)
-		return;
-
-	if (cloud_out == nullptr || view == nullptr)
-		return;
 }

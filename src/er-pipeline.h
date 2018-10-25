@@ -242,8 +242,8 @@ namespace er {
 		process_unit();
 		~process_unit();
 
-		void input(frame_2d type, void *color_frame);
-		void input(pcl_ptr cloud);
+		void input_frame(frame_2d type, void *color_frame);
+		void input_pcl(pcl_ptr cloud);
 
 		// Process the current process_unit and runs the algorithms
 		// Returns true if the process has finished so we call the callback

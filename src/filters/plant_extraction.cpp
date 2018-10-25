@@ -43,11 +43,18 @@ using namespace er;
 
 #define MAX_Z 3
 
+
+void plants_filter::input_pcl(pcl_ptr cloud)
+{
+	er::process_unit::input_pcl(cloud);
+}
+
 //------ Plant discovery & Extraction ------
 // After we align the floor
 
 bool plants_filter::process()
 {
+	printf(" Plants_filter: %p\n", this);
 	if (cloud_out == nullptr) {
 		pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
 		cloud_out = cloud;
@@ -61,15 +68,15 @@ bool plants_filter::process()
 	for (auto& p : cloud_in->points) {
 		bool add_point = true;
 
-		if (p.r + p.g + p.b > MAX_LUMINOSITY) {
+		if (p.r + p.g + p.b < MAX_LUMINOSITY) {
 			add_point = false;
 		} else
-		if (p.a > IR) {
+		if (p.a < IR) {
 			add_point = false;
 		} else {
 			float nvdi = float(p.a - p.r) / (p.a + p.r);
 
-			if (nvdi > NVDI) {
+			if (nvdi < NVDI) {
 				add_point = false;
 			}
 		}
@@ -78,6 +85,22 @@ bool plants_filter::process()
 			cloud_out->points.push_back(p);
 	}
 
+	if (view != nullptr) {
+		view->invalidate_cloud(cloud_out);
+		if (view->V.size() > 0) {
+
+			Eigen::Transform<double, 3, Eigen::Affine>
+				ground_transform = grnd_filter->ground_transform;
+
+			if (er::app_state::get().ground_alignment) {
+				for (int r = 0; r < view->V.rows(); r++) {
+					Eigen::Vector3d v = view->V.row(r);
+					v = ground_transform * v;
+					view->V.row(r) = v;
+				}
+			}
+		}
+	}
 	return true;
 }
 
@@ -88,9 +111,5 @@ void plants_filter::set_ground_filter(ground_filter *grnd_filter_)
 
 void plants_filter::invalidate_view()
 {
-	if (!visible)
-		return;
 
-	if (cloud_out == nullptr || view == nullptr)
-		return;
 }

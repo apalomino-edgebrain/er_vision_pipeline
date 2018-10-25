@@ -58,6 +58,7 @@ namespace er {
 		//-----------------------------------------------
 		// UI API
 
+		bool show_igl_viewer_menu = false;
 		bool show_app_console = false;
 		bool show_app_log = false;
 

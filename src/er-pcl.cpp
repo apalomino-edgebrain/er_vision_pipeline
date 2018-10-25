@@ -548,9 +548,9 @@ int main(int argc, char * argv[]) try {
 					if (tex_coords[i].u < 0 || tex_coords[i].u > 1 || tex_coords[i].v < 0 || tex_coords[i].v > 1) {
 						if (!er::app_state::get().show_ir_only_data) {
 							add_point = false;
-							add_point_pipe = false;
 						}
 
+						add_point_pipe = false;
 					} else {
 						get_texcolor(&color, tex_coords[i].u, tex_coords[i].v, p.r, p.g, p.b);
 						point_raw = p;
