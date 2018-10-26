@@ -107,15 +107,22 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 			ShowAppCustomRendering(&er::app_state::get().show_plant_ui_window);
 
 			{
-				ImGui::Begin("System", nullptr, flags | ImGuiWindowFlags_MenuBar);
-
-				ImGui::Text("Playback");
-				ImGui::SameLine(70); ImGui::Text("%s",
-					app_state::get().capture_folder.c_str());
+				ImGui::Begin("System", nullptr, flags);
 
 				if (ImGui::CollapsingHeader("Capture", ImGuiTreeNodeFlags_DefaultOpen)) {
+					ImGui::Text("Data Path");
+					ImGui::SameLine(50); ImGui::Text("%s",
+						app_state::get().capture_folder.c_str());
+
 					float w = ImGui::GetContentRegionAvailWidth();
 					float p = ImGui::GetStyle().FramePadding.x;
+
+					static char buf[64] = "Short Description";
+					if (ImGui::InputText("Short Description", buf, IM_ARRAYSIZE(buf)))
+					{
+						printf("TODO: Save description - Renamed file data\n");
+					}
+
 					if (ImGui::Button("Load##Analysis", ImVec2((w - p) / 2.f, 0))) {
 						std::string fname = igl::file_dialog_open();
 
@@ -211,6 +218,14 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				ImGui::SliderFloat("zoom", &viewer.core.camera_zoom, -0.1f, 10);
 
 				if (ImGui::Button("Save##Camera")) {
+
+					// Save camera position
+					app_state::get().save_vec3f("camera_translation", viewer.core.camera_translation);
+					Eigen::Vector4f v4 = { viewer.core.trackball_angle.x(), viewer.core.trackball_angle.y(), viewer.core.trackball_angle.z(), viewer.core.trackball_angle.w() };
+					app_state::get().save_vec4f("trackball_angle", v4);
+
+					app_state::get().config["camera_zoom"] = viewer.core.camera_zoom;
+
 					er::app_state::get().save_configuration();
 				}
 

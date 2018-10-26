@@ -28,12 +28,16 @@
 
 #define DEFAULT_CONFIG "vision_cfg.json"
 
+#include <Eigen/Core>
+
 using namespace nlohmann;
 
 namespace er {
     class app_state
     {
     public:
+		std::string config_path;
+
 		json config;
 
 		app_state();
@@ -135,7 +139,19 @@ namespace er {
 		//-----------------------------------------------
 		bool playing = true;
 		bool bool_extract_plants = false;
-    };
+
+		void config_to_json();
+		void json_to_config();
+
+		void save_vec3f(const char *name, Eigen::Vector3f &vec);
+		Eigen::Vector3f load_vec3f(const char *name);
+
+		void save_vec3d(const char *name, Eigen::Vector3d &vec);
+		Eigen::Vector3d load_vec3d(const char *name);
+
+		void save_vec4f(const char *name, Eigen::Vector4f &vec);
+		Eigen::Vector4f load_vec4f(const char *name);
+};
 
 }
 

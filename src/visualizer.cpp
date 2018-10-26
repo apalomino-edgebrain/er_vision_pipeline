@@ -411,6 +411,19 @@ void er::worker_t::start()
 		// Position the camera in our reference frame
 		viewer.core.camera_eye = Eigen::Vector3f(0, 1, -0.5f);
 		viewer.core.is_animating = true;
+
+		// Load camera position
+
+		viewer.core.camera_translation = app_state::get().load_vec3f("camera_translation");
+
+		Eigen::Vector4f v4 = app_state::get().load_vec4f("trackball_angle");
+		viewer.core.trackball_angle = Eigen::Quaternionf( v4.w(), v4.x(), v4.y(), v4.z() );
+
+		viewer.core.camera_zoom = app_state::get().config["camera_zoom"];
+		if (viewer.core.camera_zoom == 0) {
+			printf(" No camera info, we should default to normal one");
+		}
+
 		return false;
 	};
 
