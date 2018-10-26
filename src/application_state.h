@@ -1,24 +1,24 @@
 //#############################################################################
-                                 /*-:::--.`
-                            -+shmMMNmmddmmNMNmho/.
-                 `yyo++osddMms:                  `/yNNy-
-              yo    +mMy:                       `./dMMdyssssso-
-              oy  -dMy.                     `-+ssso:.`:mMy`   .ys
-                ho+MN:                  `:osso/.         oMm-   +h
-                +Mmd-           `/syo-                     :MNhs`
-                `NM-.hs`      :syo:                          sMh
-                oMh   :ho``/yy+.                             `MM.
-                hM+    `yNN/`                                 dM+
-                dM/  -sy/`/ho`                                hMo
-                hMo/ho.     :yy-                             dM/
-            :dNM/             :yy:                         yMy
-            sy`:MN.              `+ys-                     +Mm`
-            oy`   :NM+                  .+ys/`           `hMd.ys
-            /sssssyNMm:                   `:sys:`     `oNN+   m-
-                        .sNMh+.                   `:sNMdyysssssy:
-                        -odMNhs+:-.`    `.-/oydMNh+.
-                            `-+shdNMMMMMMMNmdyo/.
-                                    `````*/
+								 /*-:::--.`
+							-+shmMMNmmddmmNMNmho/.
+				 `yyo++osddMms:                  `/yNNy-
+			  yo    +mMy:                       `./dMMdyssssso-
+			  oy  -dMy.                     `-+ssso:.`:mMy`   .ys
+				ho+MN:                  `:osso/.         oMm-   +h
+				+Mmd-           `/syo-                     :MNhs`
+				`NM-.hs`      :syo:                          sMh
+				oMh   :ho``/yy+.                             `MM.
+				hM+    `yNN/`                                 dM+
+				dM/  -sy/`/ho`                                hMo
+				hMo/ho.     :yy-                             dM/
+			:dNM/             :yy:                         yMy
+			sy`:MN.              `+ys-                     +Mm`
+			oy`   :NM+                  .+ys/`           `hMd.ys
+			/sssssyNMm:                   `:sys:`     `oNN+   m-
+						.sNMh+.                   `:sNMdyysssssy:
+						-odMNhs+:-.`    `.-/oydMNh+.
+							`-+shdNMMMMMMMNmdyo/.
+									`````*/
 //#############################################################################
 // Application global state
 //#############################################################################
@@ -33,15 +33,15 @@
 using namespace nlohmann;
 
 namespace er {
-    class app_state
-    {
-    public:
+	class app_state
+	{
+	public:
 		std::string config_path;
 
 		json config;
 
 		app_state();
-        ~app_state();
+		~app_state();
 
 		// Returns a singleton containing the application state.
 		static app_state &get()
@@ -51,12 +51,12 @@ namespace er {
 		}
 
 		//-----------------------------------------------
-        // Loads the application configuration.
+		// Loads the application configuration.
 		// Here we specify if we have a frontend or not.
 
 		std::string json_configuration_file_path_;
 
-        void load_configuration(std::string json_configuration_file_path_);
+		void load_configuration(std::string json_configuration_file_path_);
 		void save_configuration();
 
 		bool invalidate_playback = false;
@@ -77,10 +77,6 @@ namespace er {
 		bool bool_debug_verbose = false;
 
 		bool invalidate_ui = false;
-
-		bool show_app = true;
-
-		bool show_analysis = true;
 
 		bool show_ground = false;
 		bool show_plants = true;
@@ -120,6 +116,17 @@ namespace er {
 		float max_clip[3] = { 0, 50, -50 };
 
 		//-----------------------------------------------
+		// Window views
+
+		bool show_camera_window = true;
+		bool show_debug_ground = true;
+		bool show_raw_rgbd = true;
+		bool show_system_view = true;
+		bool show_plants_view = true;
+		bool show_app = true;
+		bool show_analysis = true;
+
+		//-----------------------------------------------
 		// Plants distantances
 
 		float plant_min_Y = 0.05f;
@@ -155,7 +162,12 @@ namespace er {
 		//-----------------------------------------------
 		uint64_t playback_position;
 		uint64_t playback_duration;
-};
+
+		//-----------------------------------------------
+		// This is our exit trigger. We close the system if we detect
+		// that this is set to true.
+		bool should_close_app = false;
+	};
 
 }
 

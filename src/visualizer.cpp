@@ -174,9 +174,10 @@ void er::frame_data::render_point(void *viewer_ptr,
 	C << color[0], color[1], color[2];
 
 	Eigen::VectorXd radius(1);
-	radius.setConstant(er::app_state::get().point_scale * 2.5);
+	radius.setConstant(er::app_state::get().point_scale * 10.5);
 
 	viewer->data().set_points(V, C, radius);
+	viewer->append_mesh();
 }
 
 // Helper to render a plane
@@ -442,6 +443,8 @@ void er::worker_t::start()
 	viewer.core.viewport << 0, 0, 1800, 924;
 
 	viewer.launch();
+	printf("Closing down");
+	er::app_state::get().should_close_app = true;
 }
 
 std::vector<er::frame_data *> &er::worker_t::get_data_views()

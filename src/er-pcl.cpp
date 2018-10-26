@@ -50,6 +50,8 @@
 
 #include "application_state.h"
 
+using namespace er;
+
 // Registers the state variable and callbacks to allow mouse control of the pointcloud
 void register_glfw_callbacks(window& app, state& app_state)
 {
@@ -360,8 +362,8 @@ int main(int argc, char * argv[]) try {
 
 		printf_h1("Loading %s ", file_record);
 
-		er::app_state::get().set_current_file(file_record);
-		er::app_state::get().invalidate_playback = false;
+		app_state::get().set_current_file(file_record);
+		app_state::get().invalidate_playback = false;
 		read_file = true;
 	} else {
 		std::cout << "TODO: Ask for a file!" << std::endl;
@@ -372,7 +374,7 @@ int main(int argc, char * argv[]) try {
 	}
 
 	Eigen::initParallel();
-	er::worker_t *worker = launch_visualizer();
+	worker_t *worker = launch_visualizer();
 
 	// Create a simple OpenGL window for rendering:
 	window app(1280, 720, "Earth Rover PCL Pipeline");
@@ -418,35 +420,37 @@ int main(int argc, char * argv[]) try {
 	er::pipeline er_pipe;
 
 	if (read_file)
-		er_pipe.initialize_folder(er::app_state::get().capture_folder);
+		er_pipe.initialize_folder(app_state::get().capture_folder);
 
 	bool playing_state = true;
 
-	while (app) // Application still alive?
+	while (app && !app_state::get().should_close_app) // Application still alive?
 	{
+		app_state::get().should_close_app = glfwWindowShouldClose(app);
+
 		// Wait for the next set of frames from the camera
 		rs2::playback playback = device.as<rs2::playback>();
 
 		uint64_t position = playback.get_position() / 1000000;
-		er::app_state::get().playback_position = position;
+		app_state::get().playback_position = position;
 		std::chrono::milliseconds duration = std::chrono::milliseconds(playback.get_duration().count());
 
-		er::app_state::get().playback_duration = duration.count();
+		app_state::get().playback_duration = duration.count();
 
-		if (er::app_state::get().invalidate_playback) {
+		if (app_state::get().invalidate_playback) {
 			std::cout << "Invalidate playback " << std::endl;
 
 			pipe->stop(); // Stop the pipeline with the default configuration
 			pipe = std::make_shared<rs2::pipeline>();
 
 			rs2::config cfg; // Declare a new configuration
-			cfg.enable_device_from_file(er::app_state::get().capture_bag);
+			cfg.enable_device_from_file(app_state::get().capture_bag);
 			pipe->start(cfg); //File will be opened at this point
 			device = pipe->get_active_profile().get_device();
-			er::app_state::get().invalidate_playback = false;
+			app_state::get().invalidate_playback = false;
 		}
 
-		if (playing_state != er::app_state::get().playing) {
+		if (playing_state != app_state::get().playing) {
 			playback.resume();
 			playing_state = !playing_state;
 			if (playing_state) {
@@ -505,18 +509,18 @@ int main(int argc, char * argv[]) try {
 
 					//-- Z Clipping max and min values--
 
-					if (p.z > er::app_state::get().max_clip[2])
-						er::app_state::get().max_clip[2] = p.z;
+					if (p.z > app_state::get().max_clip[2])
+						app_state::get().max_clip[2] = p.z;
 
-					if (p.z < er::app_state::get().min_clip[2])
-						er::app_state::get().min_clip[2] = p.z;
+					if (p.z < app_state::get().min_clip[2])
+						app_state::get().min_clip[2] = p.z;
 
 					//-- Y Clipping max and min values--
-					if (p.y > er::app_state::get().max_clip[1])
-						er::app_state::get().max_clip[1] = p.y;
+					if (p.y > app_state::get().max_clip[1])
+						app_state::get().max_clip[1] = p.y;
 
-					if (p.y < er::app_state::get().min_clip[1])
-						er::app_state::get().min_clip[1] = p.y;
+					if (p.y < app_state::get().min_clip[1])
+						app_state::get().min_clip[1] = p.y;
 
 					get_texinfrared(&infrared, tex_coords[i].u, tex_coords[i].v, p.a);
 					p.r = p.g = p.b = p.a;
@@ -552,7 +556,7 @@ int main(int argc, char * argv[]) try {
 					bool add_point_pipe = true;
 
 					if (tex_coords[i].u < 0 || tex_coords[i].u > 1 || tex_coords[i].v < 0 || tex_coords[i].v > 1) {
-						if (!er::app_state::get().show_ir_only_data) {
+						if (!app_state::get().show_ir_only_data) {
 							add_point = false;
 						}
 
@@ -563,32 +567,32 @@ int main(int argc, char * argv[]) try {
 
 						float nvdi = float(p.a - p.r) / (p.a + p.r);
 
-						if (er::app_state::get().show_ground && er::app_state::get().show_plants) {
+						if (app_state::get().show_ground && app_state::get().show_plants) {
 						} else {
-							if (er::app_state::get().show_ground) {
-								if (nvdi > er::app_state::get().cur_nvdi) {
+							if (app_state::get().show_ground) {
+								if (nvdi > app_state::get().cur_nvdi) {
 									p.r = p.g = p.b = 0;
 									p.z = 0;
 									add_point = false;
 								}
 
-								if (p.a < (er::app_state::get().cur_ir * 255.f)) {
+								if (p.a < (app_state::get().cur_ir * 255.f)) {
 									p.g = p.b = 0;
 									p.r = p.a;
 								}
 							}
 
-							if (er::app_state::get().show_plants) {
-								if (nvdi < er::app_state::get().cur_nvdi) {
-									if (er::app_state::get().bool_tint_nvdi) {
+							if (app_state::get().show_plants) {
+								if (nvdi < app_state::get().cur_nvdi) {
+									if (app_state::get().bool_tint_nvdi) {
 										p.g = p.b = 0;
 										p.r = p.a;
 									} else {
 										add_point = false;
 									}
 								} else {
-									if (p.a < (er::app_state::get().cur_ir * 255.f)) {
-										if (er::app_state::get().bool_tint_ir) {
+									if (p.a < (app_state::get().cur_ir * 255.f)) {
+										if (app_state::get().bool_tint_ir) {
 											p.g = p.r = 0;
 											p.b = p.a;
 										} else {
@@ -599,11 +603,11 @@ int main(int argc, char * argv[]) try {
 							}
 						}
 
-						if (nvdi < er::app_state::get().min_nvdi)
-							er::app_state::get().min_nvdi = nvdi;
+						if (nvdi < app_state::get().min_nvdi)
+							app_state::get().min_nvdi = nvdi;
 
-						if (nvdi > er::app_state::get().max_nvdi)
-							er::app_state::get().max_nvdi = nvdi;
+						if (nvdi > app_state::get().max_nvdi)
+							app_state::get().max_nvdi = nvdi;
 
 					}
 
@@ -620,7 +624,7 @@ int main(int argc, char * argv[]) try {
 				}
 
 				//--------------- Push cloud ----------------------------
-				if (!er::app_state::get().bool_color_cluster) {
+				if (!app_state::get().bool_color_cluster) {
 					er_pipe.process_frame(cloud_pipe, worker->get_data_views());
 					worker->update_view = true;
 				}
@@ -633,12 +637,12 @@ int main(int argc, char * argv[]) try {
 			// Create the normal estimation class, and pass the input dataset to it
 
 			//------------- Filter limit ------------------------
-			if (er::app_state::get().bool_distance_filter) {
+			if (app_state::get().bool_distance_filter) {
 				pcl_ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZRGBA>);
 				pcl::PassThrough<pcl::PointXYZRGBA> pass;
 				pass.setInputCloud(cloud);
 				pass.setFilterFieldName("z");
-				pass.setFilterLimits(er::app_state::get().cur_min_clip[2], er::app_state::get().cur_max_clip[2]);
+				pass.setFilterLimits(app_state::get().cur_min_clip[2], app_state::get().cur_max_clip[2]);
 
 				//pass.setFilterFieldName("y");
 				//pass.setFilterLimits(cur_min_clip[1], cur_max_clip[1]);
@@ -658,7 +662,7 @@ int main(int argc, char * argv[]) try {
 				ne.compute(*cloud_normals);
 				*/
 			} else
-				if (er::app_state::get().bool_cloud_raw) {
+				if (app_state::get().bool_cloud_raw) {
 					layers.push_back(cloud);
 				}
 
@@ -670,13 +674,13 @@ int main(int argc, char * argv[]) try {
 			sor.setLeafSize(0.1f, 0.1f, 0.1f);
 			sor.filter(*cloud_voxel);
 
-			if (er::app_state::get().bool_voxel_process) {
+			if (app_state::get().bool_voxel_process) {
 				layers.push_back(cloud_voxel);
 			}
 
 			//------------- COLOR Cluster ------------------------
 
-			if (er::app_state::get().bool_color_cluster && cloud->points.size() > 0) {
+			if (app_state::get().bool_color_cluster && cloud->points.size() > 0) {
 
 				pcl::search::Search <pcl::PointXYZRGBA>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZRGBA> >(new pcl::search::KdTree<pcl::PointXYZRGBA>);
 				pcl::IndicesPtr indices(new std::vector <int>);
@@ -726,7 +730,7 @@ int main(int argc, char * argv[]) try {
 			//pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
 			//pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
 
-			if (er::app_state::get().bool_extract_plants) {
+			if (app_state::get().bool_extract_plants) {
 				extract_plants(cloud);
 			}
 		}

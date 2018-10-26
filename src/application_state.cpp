@@ -61,8 +61,6 @@ void er::app_state::json_to_config()
 
 	show_app = config["show_app"];
 
-	show_analysis = config["show_analysis"];
-
 	show_ground = config["show_ground"];
 	show_plants = config["show_plants"];
 	show_ir_only_data = config["show_ir_only_data"];
@@ -99,6 +97,14 @@ void er::app_state::json_to_config()
 	bool_override_rotation = config["bool_override_rotation"];
 
 	bool_extract_plants = config["bool_extract_plants"];
+
+	// Window render
+	show_camera_window = config["show_camera_window"];
+	show_debug_ground = config["show_debug_ground"];
+	show_raw_rgbd = config["show_raw_rgbd"];
+	show_system_view = config["show_system_view"];
+	show_plants_view = config["show_plants_view"];
+	show_analysis = config["show_analysis"];
 }
 
 void er::app_state::config_to_json()
@@ -114,8 +120,6 @@ void er::app_state::config_to_json()
 	config["invalidate_ui"] = invalidate_ui;
 
 	config["show_app"] = show_app;
-
-	config["show_analysis"] = show_analysis;
 
 	config["show_ground"] = show_ground;
 	config["show_plants"] = show_plants;
@@ -153,6 +157,14 @@ void er::app_state::config_to_json()
 	config["bool_override_rotation"] = bool_override_rotation;
 
 	config["bool_extract_plants"] = bool_extract_plants;
+
+	// Window views
+	config["show_camera_window"] = show_camera_window;
+	config["show_debug_ground"] = show_debug_ground;
+	config["show_raw_rgbd"] = show_raw_rgbd;
+	config["show_system_view"] = show_system_view;
+	config["show_plants_view"] = show_plants_view;
+	config["show_analysis"] = show_analysis;
 }
 
 void er::app_state::save_vec3f(const char *name, Eigen::Vector3f &vec)
@@ -213,6 +225,7 @@ void er::app_state::load_configuration(std::string json_config)
 		printf_("Reading config", json_config.c_str());
 		std::ifstream i(json_config.c_str());
 		i >> config;
+		json_to_config();
 	} catch (const std::exception & e) {
 		// No config? No worries, we create a new one.
 		config["version"] = __DATE__ __TIME__;

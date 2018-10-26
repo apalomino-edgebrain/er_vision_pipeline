@@ -115,7 +115,7 @@ bool plants_filter::process()
 		Eigen::RowVector3d pos;
 
 		for (float t = 0.0f; t <= 0.5f; t += 0.1f) {
-			pos << 0.0f, t, 0.0f;
+			pos << 0.0f, t, 0.5f;
 
 			sprintf(text, "%2.2fcm", t);
 			view->render_point(viewer_ptr, pos,

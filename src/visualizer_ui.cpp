@@ -51,6 +51,18 @@ igl::opengl::glfw::imgui::ImGuiMenu menu;
 
 using namespace er;
 
+void flush_settings(igl::opengl::glfw::Viewer &viewer)
+{
+	// Save camera position
+	app_state::get().save_vec3f("camera_translation", viewer.core.camera_translation);
+	Eigen::Vector4f v4 = { viewer.core.trackball_angle.x(), viewer.core.trackball_angle.y(), viewer.core.trackball_angle.z(), viewer.core.trackball_angle.w() };
+	app_state::get().save_vec4f("trackball_angle", v4);
+
+	app_state::get().config["camera_zoom"] = viewer.core.camera_zoom;
+
+	er::app_state::get().save_configuration();
+}
+
 void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 {
 	// Attach a menu plugin
@@ -88,10 +100,9 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 								std::cout << "key: " << x.key() << ", value: " << x.value() << '\n';
 								open_file = key.c_str();
 							}
-
 						}
-
 					}
+
 					ImGui::EndMenu();
 				}
 
@@ -108,9 +119,17 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				ImGui::EndMenu();
 			}
 
-			if (ImGui::BeginMenu("Debug")) {
+			if (ImGui::BeginMenu("View")) {
 				ImGui::MenuItem("Console", NULL, &app_state::get().show_app_console);
 				ImGui::MenuItem("Log", NULL, &app_state::get().show_app_log);
+				ImGui::Separator();
+				ImGui::MenuItem("Camera", NULL, &app_state::get().show_camera_window);
+				ImGui::MenuItem("Ground", NULL, &app_state::get().show_debug_ground);
+				ImGui::MenuItem("Raw Rgbd", NULL, &app_state::get().show_raw_rgbd);
+				ImGui::MenuItem("System", NULL, &app_state::get().show_system_view);
+				ImGui::MenuItem("Plants", NULL, &app_state::get().show_plants_view);
+				ImGui::MenuItem("Plant Analsys", NULL, &app_state::get().show_analysis);
+
 				ImGui::EndMenu();
 			}
 
@@ -121,181 +140,165 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 		ShowAppLog(&app_state::get().show_app_log);
 
 		static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
-		{
-			ImGuiIO& io = ImGui::GetIO();
 
-			ShowAppCustomRendering(&er::app_state::get().show_plant_ui_window);
+		ImGuiIO& io = ImGui::GetIO();
 
-			{
-				ImGui::Begin("System", nullptr, flags);
+		ShowAppCustomRendering(&er::app_state::get().show_plant_ui_window);
 
-				if (ImGui::CollapsingHeader("Capture", ImGuiTreeNodeFlags_DefaultOpen)) {
-					ImGui::Text("Data Path");
-					ImGui::SameLine(60); ImGui::Text("%s",
-						app_state::get().capture_folder.c_str());
+		if (app_state::get().show_system_view) {
+			ImGui::Begin("System", &app_state::get().show_system_view, flags);
 
-					float w = ImGui::GetContentRegionAvailWidth();
-					float p = ImGui::GetStyle().FramePadding.x;
+			if (ImGui::CollapsingHeader("Capture", ImGuiTreeNodeFlags_DefaultOpen)) {
+				ImGui::Text("Data Path");
+				ImGui::SameLine(60); ImGui::Text("%s",
+					app_state::get().capture_folder.c_str());
 
-					static char buf[64] = "Short Description";
-					if (ImGui::InputText("Short Description", buf, IM_ARRAYSIZE(buf))) {
-						printf("TODO: Save description - Renamed file data\n");
-					}
+				float w = ImGui::GetContentRegionAvailWidth();
+				float p = ImGui::GetStyle().FramePadding.x;
 
-					if (ImGui::Button("Load##Analysis", ImVec2((w - p) / 2.f, 0))) {
-						std::string fname = igl::file_dialog_open();
-
-						if (fname.length() != 0) {
-							std::cout << "Load file " << fname << std::endl;
-							open_file = fname;
-						}
-					}
-					ImGui::SameLine(0, p);
-					if (ImGui::Button("Save##Analysis", ImVec2((w - p) / 2.f, 0))) {
-
-					}
-
-					ImGui::Separator();
-
-					float seek = app_state::get().playback_position;
-					if (ImGui::SliderFloat("Seek", &seek, 0,
-						app_state::get().playback_duration)) {
-						printf(" Seek %2.2f ", seek);
-					}
+				static char buf[64] = "Short Description";
+				if (ImGui::InputText("Short Description", buf, IM_ARRAYSIZE(buf))) {
+					printf("TODO: Save description - Renamed file data\n");
 				}
 
-				ImGui::End();
-			}
+				if (ImGui::Button("Load##Analysis", ImVec2((w - p) / 2.f, 0))) {
+					std::string fname = igl::file_dialog_open();
 
-			//ImGui::GetIO().IniFilename = "interface.ini";
-
-			{
-				ImGui::Begin("Raw RGBD View", nullptr, flags);
-
-				ImGui::Text("Color Spaces");
-				ImGui::Checkbox("Show nvdi", &app_state::get().bool_tint_nvdi);
-				ImGui::SliderFloat("NVDI", &app_state::get().cur_nvdi,
-					app_state::get().min_nvdi,
-					app_state::get().max_nvdi);
-
-				ImGui::Checkbox("Show ir", &app_state::get().bool_tint_ir);
-				ImGui::SliderFloat("IR", &app_state::get().cur_ir, app_state::get().min_ir, app_state::get().max_ir);
-				//ImGui::SliderFloat("HSV", &cur_nvdi, min_nvdi, max_nvdi);
-
-				ImGui::Text("Clipping Z");
-				ImGui::SliderFloat("Min Z", &app_state::get().cur_min_clip[2], app_state::get().min_clip[2], app_state::get().max_clip[2]);
-				ImGui::SliderFloat("Max Z", &app_state::get().cur_max_clip[2], app_state::get().min_clip[2], app_state::get().max_clip[2]);
-
-				ImGui::Text("Clipping Y");
-				ImGui::SliderFloat("clipping Y", &app_state::get().cur_max_clip[1], app_state::get().min_clip[1], app_state::get().max_clip[1]);
-
-				ImGui::Text("Point Scale");
-				ImGui::SliderFloat("scale", &app_state::get().point_scale, 0.001f, 0.02f);
-
-				if (ImGui::Checkbox("Show IR data", &app_state::get().show_ir_only_data)) {
-					app_state::get().invalidate_ui = true;
-					printf(" Show IR data \n");
-				};
+					if (fname.length() != 0) {
+						std::cout << "Load file " << fname << std::endl;
+						open_file = fname;
+					}
+				}
+				ImGui::SameLine(0, p);
+				if (ImGui::Button("Save##Analysis", ImVec2((w - p) / 2.f, 0))) {
+					flush_settings(viewer);
+				}
 
 				ImGui::Separator();
-				if (app_state::get().playing)
-					ImGui::Checkbox("Playing", &app_state::get().playing);
-				else
-					ImGui::Checkbox("Pause", &app_state::get().playing);
 
-				ImGui::Checkbox("Debug", &app_state::get().bool_debug_verbose);
-				ImGui::End();
-			}
-
-			{
-				ImGui::Begin("Debug Ground", nullptr, flags);
-				ImGui::Text("Rotation");
-				ImGui::Checkbox("Override", &app_state::get().bool_override_rotation);
-				ImGui::SliderFloat("RotX", &app_state::get().rot_x, -2 * M_PI, 2 * M_PI);
-				ImGui::SliderFloat("RotY", &app_state::get().rot_y, -2 * M_PI, 2 * M_PI);
-				ImGui::SliderFloat("RotZ", &app_state::get().rot_z, -2 * M_PI, 2 * M_PI);
-
-				ImGui::Text("Degree");
-				ImGui::SameLine(100); ImGui::Text("%2.2f", app_state::get().rot_x * 360 / (2 * M_PI));
-				ImGui::SameLine(150); ImGui::Text("%2.2f", app_state::get().rot_y * 360 / (2 * M_PI));
-				ImGui::SameLine(200); ImGui::Text("%2.2f", app_state::get().rot_z * 360 / (2 * M_PI));
-
-				ImGui::Checkbox("Traslate", &app_state::get().bool_traslate);
-				ImGui::End();
-			}
-
-			{
-				ImGui::Begin("Camera", nullptr, flags);
-
-				float eye3f[3] = { viewer.core.camera_eye.x(), viewer.core.camera_eye.y(), viewer.core.camera_eye.z() };
-				ImGui::DragFloat3("camera_eye", eye3f, 0.01f, -10.0f, 10.0f);
-
-				float cent3f[3] = { viewer.core.camera_center.x(), viewer.core.camera_center.y(), viewer.core.camera_center.z() };
-				ImGui::DragFloat3("camera_center", cent3f, 0.01f, -10.0f, 10.0f);
-
-				float tran3f[3] = { viewer.core.camera_translation.x(), viewer.core.camera_translation.y(), viewer.core.camera_translation.z() };
-				ImGui::DragFloat3("camera_translation", tran3f, 0.01f, -10.0f, 10.0f);
-
-				float quat4f[4] = { viewer.core.trackball_angle.vec()[0], viewer.core.trackball_angle.vec()[1],
-					viewer.core.trackball_angle.vec()[2], viewer.core.trackball_angle.w() };
-
-				ImGui::DragFloat4("trackball", quat4f, 0.01f, - 2 * M_PI, 2 * M_PI);
-
-				ImGui::SliderFloat("zoom", &viewer.core.camera_zoom, -0.1f, 10);
-
-				if (ImGui::Button("Save##Camera")) {
-
-					// Save camera position
-					app_state::get().save_vec3f("camera_translation", viewer.core.camera_translation);
-					Eigen::Vector4f v4 = { viewer.core.trackball_angle.x(), viewer.core.trackball_angle.y(), viewer.core.trackball_angle.z(), viewer.core.trackball_angle.w() };
-					app_state::get().save_vec4f("trackball_angle", v4);
-
-					app_state::get().config["camera_zoom"] = viewer.core.camera_zoom;
-
-					er::app_state::get().save_configuration();
+				float seek = app_state::get().playback_position;
+				if (ImGui::SliderFloat("Seek", &seek, 0,
+					app_state::get().playback_duration)) {
+					printf(" Seek %2.2f ", seek);
 				}
-
-				ImGui::End();
 			}
 
-			{
-				ImGui::Begin("Plants View", nullptr, flags);
-
-				ImGui::Text("Clipping Z");
-				ImGui::SliderFloat("Min Z", &app_state::get().plant_min_Z, -0.1f, 3);
-				ImGui::SliderFloat("Max Z", &app_state::get().plant_max_Z, -0.1f, 3);
-
-				ImGui::Text("Clipping Y");
-				ImGui::SliderFloat("Min Y", &app_state::get().plant_min_Y, -0.1f, 1);
-				ImGui::SliderFloat("Max Y", &app_state::get().plant_max_Y, -0.1f, 1);
-
-				ImGui::End();
-			}
+			ImGui::End();
 		}
 
+		//ImGui::GetIO().IniFilename = "interface.ini";
+
+		if (app_state::get().show_raw_rgbd) {
+			ImGui::Begin("Raw RGBD View", &app_state::get().show_raw_rgbd, flags);
+
+			ImGui::Text("Color Spaces");
+			ImGui::Checkbox("Show nvdi", &app_state::get().bool_tint_nvdi);
+			ImGui::SliderFloat("NVDI", &app_state::get().cur_nvdi,
+				app_state::get().min_nvdi,
+				app_state::get().max_nvdi);
+
+			ImGui::Checkbox("Show ir", &app_state::get().bool_tint_ir);
+			ImGui::SliderFloat("IR", &app_state::get().cur_ir, app_state::get().min_ir, app_state::get().max_ir);
+			//ImGui::SliderFloat("HSV", &cur_nvdi, min_nvdi, max_nvdi);
+
+			ImGui::Text("Clipping Z");
+			ImGui::SliderFloat("Min Z", &app_state::get().cur_min_clip[2], app_state::get().min_clip[2], app_state::get().max_clip[2]);
+			ImGui::SliderFloat("Max Z", &app_state::get().cur_max_clip[2], app_state::get().min_clip[2], app_state::get().max_clip[2]);
+
+			ImGui::Text("Clipping Y");
+			ImGui::SliderFloat("clipping Y", &app_state::get().cur_max_clip[1], app_state::get().min_clip[1], app_state::get().max_clip[1]);
+
+			ImGui::Text("Point Scale");
+			ImGui::SliderFloat("scale", &app_state::get().point_scale, 0.001f, 0.02f);
+
+			if (ImGui::Checkbox("Show IR data", &app_state::get().show_ir_only_data)) {
+				app_state::get().invalidate_ui = true;
+				printf(" Show IR data \n");
+			};
+
+			ImGui::Separator();
+			if (app_state::get().playing)
+				ImGui::Checkbox("Playing", &app_state::get().playing);
+			else
+				ImGui::Checkbox("Pause", &app_state::get().playing);
+
+			ImGui::Checkbox("Debug", &app_state::get().bool_debug_verbose);
+			ImGui::End();
+		}
+
+		if (app_state::get().show_debug_ground) {
+			ImGui::Begin("Debug Ground", &app_state::get().show_debug_ground, flags);
+			ImGui::Text("Rotation");
+			ImGui::Checkbox("Override", &app_state::get().bool_override_rotation);
+			ImGui::SliderFloat("RotX", &app_state::get().rot_x, -2 * M_PI, 2 * M_PI);
+			ImGui::SliderFloat("RotY", &app_state::get().rot_y, -2 * M_PI, 2 * M_PI);
+			ImGui::SliderFloat("RotZ", &app_state::get().rot_z, -2 * M_PI, 2 * M_PI);
+
+			ImGui::Text("Degree");
+			ImGui::SameLine(100); ImGui::Text("%2.2f", app_state::get().rot_x * 360 / (2 * M_PI));
+			ImGui::SameLine(150); ImGui::Text("%2.2f", app_state::get().rot_y * 360 / (2 * M_PI));
+			ImGui::SameLine(200); ImGui::Text("%2.2f", app_state::get().rot_z * 360 / (2 * M_PI));
+
+			ImGui::Checkbox("Traslate", &app_state::get().bool_traslate);
+			ImGui::End();
+		}
+
+		if (app_state::get().show_camera_window) {
+			ImGui::Begin("Camera", &app_state::get().show_camera_window, flags);
+
+			float eye3f[3] = { viewer.core.camera_eye.x(), viewer.core.camera_eye.y(), viewer.core.camera_eye.z() };
+			ImGui::DragFloat3("camera_eye", eye3f, 0.01f, -10.0f, 10.0f);
+
+			float cent3f[3] = { viewer.core.camera_center.x(), viewer.core.camera_center.y(), viewer.core.camera_center.z() };
+			ImGui::DragFloat3("camera_center", cent3f, 0.01f, -10.0f, 10.0f);
+
+			float tran3f[3] = { viewer.core.camera_translation.x(), viewer.core.camera_translation.y(), viewer.core.camera_translation.z() };
+			ImGui::DragFloat3("camera_translation", tran3f, 0.01f, -10.0f, 10.0f);
+
+			float quat4f[4] = { viewer.core.trackball_angle.vec()[0], viewer.core.trackball_angle.vec()[1],
+				viewer.core.trackball_angle.vec()[2], viewer.core.trackball_angle.w() };
+
+			ImGui::DragFloat4("trackball", quat4f, 0.01f, -2 * M_PI, 2 * M_PI);
+
+			ImGui::SliderFloat("zoom", &viewer.core.camera_zoom, -0.1f, 10);
+
+			ImGui::End();
+		}
+
+		if (app_state::get().show_plants_view) {
+			ImGui::Begin("Plants View", &app_state::get().show_plants_view, flags);
+
+			ImGui::Text("Clipping Z");
+			ImGui::SliderFloat("Min Z", &app_state::get().plant_min_Z, -0.1f, 3);
+			ImGui::SliderFloat("Max Z", &app_state::get().plant_max_Z, -0.1f, 3);
+
+			ImGui::Text("Clipping Y");
+			ImGui::SliderFloat("Min Y", &app_state::get().plant_min_Y, -0.1f, 1);
+			ImGui::SliderFloat("Max Y", &app_state::get().plant_max_Y, -0.1f, 1);
+
+			ImGui::End();
+		}
+
+		if (app_state::get().show_analysis) {
 		{
 			ImGui::Begin("Analysis", &app_state::get().show_analysis, flags);
 
 			if (ImGui::Checkbox("Show ground", &app_state::get().show_ground)) {
-				app_state::get().invalidate_ui = true;
-				printf(" Show ground\n");
+				printf(" Show ground\n"); app_state::get().invalidate_ui = true;
 			}
 
 			if (ImGui::Checkbox("Show plants", &app_state::get().show_plants)) {
-				app_state::get().invalidate_ui = true;
-				printf(" Show plants\n");
+				printf(" Show plants\n"); app_state::get().invalidate_ui = true;
 			}
 
 			if (ImGui::Checkbox("Extract plants", &app_state::get().bool_extract_plants)) {
-				app_state::get().invalidate_ui = true;
-				printf(" Extract plants\n");
+				printf(" Extract plants\n"); app_state::get().invalidate_ui = true;
 			};
 
 			ImGui::Separator();
 
 			if (ImGui::Checkbox("BBX", &app_state::get().show_bbx)) {
-				app_state::get().invalidate_ui = true;
-				printf(" Color cluster \n");
+				printf(" Color cluster \n"); app_state::get().invalidate_ui = true;
 			};
 
 			if (ImGui::Checkbox("Raw Cloud", &app_state::get().bool_cloud_raw)) {
@@ -352,12 +355,13 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 
 			ImGui::End();
 		}
+	}
 
-		// We defer the file opening since we might break the interface by changing
-		// state.
+	// We defer the file opening since we might break the interface by changing
+	// state.
 
-		if (open_file.size()>0)
+		if (open_file.size() > 0)
 			app_state::get().set_current_file(open_file);
 
-	};
+};
 }

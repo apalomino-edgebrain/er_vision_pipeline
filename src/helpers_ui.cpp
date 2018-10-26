@@ -474,12 +474,14 @@ void ShowAppCustomRendering(bool* p_open)
 	// In this example we are not using the maths operators!
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	// Primitives
-	ImGui::Text("Primitives");
 	static float sz = 36.0f;
 	static float thickness = 4.0f;
 	static ImVec4 col = ImVec4(1.0f, 1.0f, 0.4f, 1.0f);
 	const ImU32 col32 = ImColor(col);
+
+	/*
+	// Primitives
+	ImGui::Text("Primitives");
 	{
 		const ImVec2 p = ImGui::GetCursorScreenPos();
 		float x = p.x + 4.0f, y = p.y + 4.0f, spacing = 8.0f;
@@ -509,10 +511,12 @@ void ShowAppCustomRendering(bool* p_open)
 		ImGui::Dummy(ImVec2((sz + spacing) * 8, (sz + spacing) * 3));
 	}
 	ImGui::Separator();
+	*/
+
 	{
 		static ImVector<ImVec2> points;
 		static bool adding_line = false;
-		ImGui::Text("Canvas example");
+		ImGui::Text("Plant canvas");
 		if (ImGui::Button("Clear")) points.clear();
 
 		// Here we are using InvisibleButton() as a convenience to 1) advance the cursor and 2) allows us to use IsItemHovered()
