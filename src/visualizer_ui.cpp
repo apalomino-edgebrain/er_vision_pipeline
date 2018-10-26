@@ -63,16 +63,36 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 	};
 
 	menu.callback_draw_custom_window = [&] () {
+		std::string open_file;
+
 		if (ImGui::BeginMainMenuBar()) {
 			if (ImGui::BeginMenu("File")) {
 				if (ImGui::MenuItem("Open", "Ctrl+O")) {
 					std::string fname = igl::file_dialog_open();
 
-					if (fname.length() == 0)
-						return;
+					if (fname.length() != 0) {
+						std::cout << "Load file " << fname << std::endl;
+						open_file = fname;
+					}
+				}
 
-					std::cout << "Load file " << fname << std::endl;
-					app_state::get().set_current_file(fname);
+				if (ImGui::BeginMenu("Open Recent")) {
+					json j_object = app_state::get().config["recent_files"];
+
+					if (j_object != nullptr) {
+						for (auto& x : json::iterator_wrapper(j_object)) {
+
+							std::string key = x.key();
+							if (ImGui::MenuItem(key.c_str())) {
+								std::cout << "---------- Open ---------------\n";
+								std::cout << "key: " << x.key() << ", value: " << x.value() << '\n';
+								open_file = key.c_str();
+							}
+
+						}
+
+					}
+					ImGui::EndMenu();
 				}
 
 				ImGui::EndMenu();
@@ -111,30 +131,36 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 
 				if (ImGui::CollapsingHeader("Capture", ImGuiTreeNodeFlags_DefaultOpen)) {
 					ImGui::Text("Data Path");
-					ImGui::SameLine(50); ImGui::Text("%s",
+					ImGui::SameLine(60); ImGui::Text("%s",
 						app_state::get().capture_folder.c_str());
 
 					float w = ImGui::GetContentRegionAvailWidth();
 					float p = ImGui::GetStyle().FramePadding.x;
 
 					static char buf[64] = "Short Description";
-					if (ImGui::InputText("Short Description", buf, IM_ARRAYSIZE(buf)))
-					{
+					if (ImGui::InputText("Short Description", buf, IM_ARRAYSIZE(buf))) {
 						printf("TODO: Save description - Renamed file data\n");
 					}
 
 					if (ImGui::Button("Load##Analysis", ImVec2((w - p) / 2.f, 0))) {
 						std::string fname = igl::file_dialog_open();
 
-						if (fname.length() == 0)
-							return;
-
-						std::cout << "Load file " << fname << std::endl;
-						app_state::get().set_current_file(fname);
+						if (fname.length() != 0) {
+							std::cout << "Load file " << fname << std::endl;
+							open_file = fname;
+						}
 					}
 					ImGui::SameLine(0, p);
 					if (ImGui::Button("Save##Analysis", ImVec2((w - p) / 2.f, 0))) {
 
+					}
+
+					ImGui::Separator();
+
+					float seek = app_state::get().playback_position;
+					if (ImGui::SliderFloat("Seek", &seek, 0,
+						app_state::get().playback_duration)) {
+						printf(" Seek %2.2f ", seek);
 					}
 				}
 
@@ -326,6 +352,12 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 
 			ImGui::End();
 		}
+
+		// We defer the file opening since we might break the interface by changing
+		// state.
+
+		if (open_file.size()>0)
+			app_state::get().set_current_file(open_file);
 
 	};
 }

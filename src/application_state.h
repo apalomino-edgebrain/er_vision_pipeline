@@ -151,6 +151,10 @@ namespace er {
 
 		void save_vec4f(const char *name, Eigen::Vector4f &vec);
 		Eigen::Vector4f load_vec4f(const char *name);
+
+		//-----------------------------------------------
+		uint64_t playback_position;
+		uint64_t playback_duration;
 };
 
 }

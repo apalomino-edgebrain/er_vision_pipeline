@@ -427,6 +427,12 @@ int main(int argc, char * argv[]) try {
 		// Wait for the next set of frames from the camera
 		rs2::playback playback = device.as<rs2::playback>();
 
+		uint64_t position = playback.get_position() / 1000000;
+		er::app_state::get().playback_position = position;
+		std::chrono::milliseconds duration = std::chrono::milliseconds(playback.get_duration().count());
+
+		er::app_state::get().playback_duration = duration.count();
+
 		if (er::app_state::get().invalidate_playback) {
 			std::cout << "Invalidate playback " << std::endl;
 

@@ -244,6 +244,21 @@ void er::app_state::set_current_file(std::string filepath_playback)
 		capture_folder = filepath_playback;
 	}
 
-	invalidate_playback;
+	invalidate_playback = true;
+
+	try {
+		json j_object = config["recent_files"];
+
+		if (j_object != nullptr) {
+			auto it_f = j_object.find(capture_bag);
+			if ((it_f != j_object.end()))
+				j_object.erase(it_f);
+		}
+	} catch (const std::exception & e) {
+		printf(" Unable to delete old file");
+	}
+
+	config["recent_files"][capture_bag] = config["recent_files"].size();
+
 	save_configuration();
 }
