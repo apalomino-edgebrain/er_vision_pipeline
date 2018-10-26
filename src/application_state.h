@@ -26,10 +26,16 @@
 #ifndef application_state_H_
 #define application_state_H_
 
+#define DEFAULT_CONFIG "vision_cfg.json"
+
+using namespace nlohmann;
+
 namespace er {
     class app_state
     {
     public:
+		json config;
+
 		app_state();
         ~app_state();
 
@@ -57,6 +63,8 @@ namespace er {
 
 		//-----------------------------------------------
 		// UI API
+
+		bool show_plant_ui_window = true;
 
 		bool show_igl_viewer_menu = false;
 		bool show_app_console = false;
@@ -111,7 +119,7 @@ namespace er {
 		// Plants distantances
 
 		float plant_min_Y = 0.05f;
-		float plant_max_Y = 0.250f;     // Max 1 meter
+		float plant_max_Y = 0.50f;     // Max 1 meter
 
 		float plant_min_Z = 0;
 		float plant_max_Z = 3;

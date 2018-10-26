@@ -23,7 +23,7 @@
 // Basic tools to print with pretty logging
 //#############################################################################
 
-#include "er-pipeline.h"
+#include "../er-pipeline.h"
 
 void clear_screen();
 void printf_h1(const char* szOutput, ...);

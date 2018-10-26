@@ -67,6 +67,8 @@ using namespace er;
 
 bool ground_filter::process()
 {
+	start_process();
+
 	if (cloud_out == nullptr) {
 		pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
 		cloud_out = cloud;
@@ -293,7 +295,7 @@ bool ground_filter::process()
 		}
 	}
 
-
+	end_process();
 	return true;
 }
 

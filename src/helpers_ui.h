@@ -30,6 +30,7 @@
 
 void ShowAppConsole(bool* p_open);
 void ShowAppLog(bool* p_open);
+void ShowAppCustomRendering(bool* p_open);
 
 #endif
 //#############################################################################

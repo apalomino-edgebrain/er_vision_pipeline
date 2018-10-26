@@ -104,6 +104,8 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 		{
 			ImGuiIO& io = ImGui::GetIO();
 
+			ShowAppCustomRendering(&er::app_state::get().show_plant_ui_window);
+
 			{
 				ImGui::Begin("System", nullptr, flags | ImGuiWindowFlags_MenuBar);
 
@@ -186,6 +188,32 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				ImGui::SameLine(200); ImGui::Text("%2.2f", app_state::get().rot_z * 360 / (2 * M_PI));
 
 				ImGui::Checkbox("Traslate", &app_state::get().bool_traslate);
+				ImGui::End();
+			}
+
+			{
+				ImGui::Begin("Camera", nullptr, flags);
+
+				float eye3f[3] = { viewer.core.camera_eye.x(), viewer.core.camera_eye.y(), viewer.core.camera_eye.z() };
+				ImGui::DragFloat3("camera_eye", eye3f, 0.01f, -10.0f, 10.0f);
+
+				float cent3f[3] = { viewer.core.camera_center.x(), viewer.core.camera_center.y(), viewer.core.camera_center.z() };
+				ImGui::DragFloat3("camera_center", cent3f, 0.01f, -10.0f, 10.0f);
+
+				float tran3f[3] = { viewer.core.camera_translation.x(), viewer.core.camera_translation.y(), viewer.core.camera_translation.z() };
+				ImGui::DragFloat3("camera_translation", tran3f, 0.01f, -10.0f, 10.0f);
+
+				float quat4f[4] = { viewer.core.trackball_angle.vec()[0], viewer.core.trackball_angle.vec()[1],
+					viewer.core.trackball_angle.vec()[2], viewer.core.trackball_angle.w() };
+
+				ImGui::DragFloat4("trackball", quat4f, 0.01f, - 2 * M_PI, 2 * M_PI);
+
+				ImGui::SliderFloat("zoom", &viewer.core.camera_zoom, -0.1f, 10);
+
+				if (ImGui::Button("Save##Camera")) {
+					er::app_state::get().save_configuration();
+				}
+
 				ImGui::End();
 			}
 

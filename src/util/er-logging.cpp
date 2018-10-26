@@ -23,7 +23,7 @@
 // Basic tools to print with pretty logging
 //#############################################################################
 
-#include "er-pipeline.h"
+#include "../er-pipeline.h"
 
 //-------------------------------------------------------------------------------
 enum STR_PAD { STR_PAD_RIGHT, STR_PAD_LEFT, STR_PAD_BOTH };

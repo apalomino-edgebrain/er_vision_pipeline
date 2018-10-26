@@ -104,9 +104,24 @@ bool plants_filter::process()
 						}
 					}
 
-		if (add_point)
-			cloud_out->points.push_back(p);
+				if (add_point)
+					cloud_out->points.push_back(p);
 	}
+
+	if (view != nullptr)
+		view->f_external_render = [&] (void *viewer_ptr) {
+		char text[512];
+
+		Eigen::RowVector3d pos;
+
+		for (float t = 0.0f; t <= 0.5f; t += 0.1f) {
+			pos << 0.0f, t, 0.0f;
+
+			sprintf(text, "%2.2fcm", t);
+			view->render_point(viewer_ptr, pos,
+				Eigen::Vector3d { 1, 1, 1 }, text);
+		}
+	};
 
 	return true;
 }

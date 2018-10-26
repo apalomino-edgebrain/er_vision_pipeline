@@ -314,8 +314,10 @@ void er::worker_t::compute_cloud()
 
 #include <Eigen/Geometry>
 
-//-------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 // Random code testing
+//-----------------------------------------------------------------------------
+
 void testing()
 {
 	Eigen::MatrixXd V_test;
@@ -344,6 +346,7 @@ void testing()
 
 	cout << V_test << endl;
 }
+
 //-------------------------------------------------------------------------
 
 void er::worker_t::start()
@@ -394,6 +397,7 @@ void er::worker_t::start()
 
 		viewer.data().set_points(V, C, radius);
 	}
+
 	*/
 	//------------------------------------------------------------
 
@@ -405,7 +409,7 @@ void er::worker_t::start()
 		printf("Setting up camera!\n");
 
 		// Position the camera in our reference frame
-		viewer.core.camera_eye = Eigen::Vector3f(0, 0, -2.5f);
+		viewer.core.camera_eye = Eigen::Vector3f(0, 1, -0.5f);
 		viewer.core.is_animating = true;
 		return false;
 	};

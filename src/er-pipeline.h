@@ -138,7 +138,7 @@ using pcl_ptr = pcl::PointCloud<pcl::PointXYZRGBA>::Ptr;
 // TOOLS
 //-----------------------------------------------------------------------------
 
-#include "er-logging.h"
+#include "util/er-logging.h"
 
 typedef Eigen::Transform<double, 3, Eigen::Affine> Tform3;
 typedef Eigen::Vector3d Vec3;
@@ -151,6 +151,9 @@ typedef Eigen::Quaterniond Quat;
 #include "process_3d.h"
 
 #include <mutex>
+#include <ctime>
+#include <ratio>
+#include <chrono>
 
 struct plane;
 
@@ -228,6 +231,12 @@ namespace er {
 	class process_unit
 	{
 	public:
+		std::chrono::high_resolution_clock::time_point t_start;
+		std::chrono::duration<double> t_elapsed;
+
+		void start_process();
+		void end_process();
+
 		// Each unit should be able to calculate the time it took to process.
 		// TODO Benchmarking on the process units
 

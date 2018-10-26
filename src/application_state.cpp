@@ -24,8 +24,13 @@
 //#############################################################################
 
 #include <string>
+#include <iostream>
+
+#include "json/json.hpp"
+using namespace nlohmann;
 
 #include "application_state.h"
+#include "util/er-logging.h"
 
 #include <boost/filesystem.hpp>
 using namespace boost::filesystem;
@@ -33,6 +38,7 @@ using namespace boost::filesystem;
 er::app_state::app_state()
 {
     printf("+ Initialize pipeline\n");
+	load_configuration(DEFAULT_CONFIG);
 }
 
 er::app_state::~app_state()
@@ -42,12 +48,19 @@ er::app_state::~app_state()
 
 void er::app_state::load_configuration (std::string json_config)
 {
+	printf_("Reading config", json_config.c_str());
+	std::ifstream i(json_config.c_str());
+	i >> config;
 
+	printf_h2("Config");
+
+	std::cout << std::setw(4) << config << std::endl;
 }
 
 void er::app_state::save_configuration()
 {
 
+	std::cout << "Save" << std::endl;
 }
 
 void er::app_state::set_current_file(std::string filepath_playback)

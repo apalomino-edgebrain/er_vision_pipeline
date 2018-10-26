@@ -100,6 +100,19 @@ void er::pipeline::initialize_folder(std::string folder_path)
 // process_units system
 //-----------------------------------------------------------------------------
 
+void er::process_unit::start_process()
+{
+	using namespace std::chrono;
+	t_start = high_resolution_clock::now();
+}
+
+void er::process_unit::end_process()
+{
+	using namespace std::chrono;
+	high_resolution_clock::time_point t2 = high_resolution_clock::now();
+	t_elapsed = duration_cast<duration<double>>(t2 - t_start);
+}
+
 er::process_unit::process_unit() : f_callback_output { nullptr }
 {
 
