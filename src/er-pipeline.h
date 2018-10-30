@@ -184,6 +184,8 @@ namespace er {
 
 		pcl_ptr cloud;
 
+		float point_scale;
+
 		frame_data();
 
 		// Pushes a cloud into this item
@@ -251,8 +253,8 @@ namespace er {
 		process_unit();
 		~process_unit();
 
-		void input_frame(frame_2d type, void *color_frame);
-		void input_pcl(pcl_ptr cloud);
+		virtual void input_frame(frame_2d type, void *color_frame);
+		virtual void input_pcl(pcl_ptr cloud);
 
 		// Process the current process_unit and runs the algorithms
 		// Returns true if the process has finished so we call the callback
@@ -267,7 +269,7 @@ namespace er {
 		// have multiple processes waiting for this result.
 		std::function<void(pcl_ptr)> f_callback_output;
 
-		pcl_ptr output(int id);
+		virtual pcl_ptr output(int id);
 	};
 
     class pipeline

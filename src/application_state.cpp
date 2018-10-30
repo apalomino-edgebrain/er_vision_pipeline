@@ -105,6 +105,13 @@ void er::app_state::json_to_config()
 	show_system_view = config["show_system_view"];
 	show_plants_view = config["show_plants_view"];
 	show_analysis = config["show_analysis"];
+
+	// Voxel and plant segmentation
+	show_voxel_view = config["show_voxel_view"];
+	leaf_X = config["leaf_X"];
+	leaf_Y = config["leaf_Y"];
+	leaf_Z = config["leaf_Z"];
+	scale_voxel_grid = config["scale_voxel_grid"];
 }
 
 void er::app_state::config_to_json()
@@ -165,6 +172,13 @@ void er::app_state::config_to_json()
 	config["show_system_view"] = show_system_view;
 	config["show_plants_view"] = show_plants_view;
 	config["show_analysis"] = show_analysis;
+
+	// Voxel and plant segmentation
+	config["show_voxel_view"] = show_voxel_view;
+	config["leaf_X"] = leaf_X;
+	config["leaf_Y"] = leaf_Y;
+	config["leaf_Z"] = leaf_Z;
+	config["scale_voxel_grid"] = scale_voxel_grid;
 }
 
 void er::app_state::save_vec3f(const char *name, Eigen::Vector3f &vec)

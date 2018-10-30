@@ -20,30 +20,47 @@
 							`-+shdNMMMMMMMNmdyo/.
 									`````*/
 //#############################################################################
-// Filter to extract the ground information
+// Plant extraction process_unit
 //#############################################################################
+//
+// See er-pipeline.h to get more information on the functionality and structure
+//
 
-#ifndef plant_extraction_filter_H_
-#define plant_extraction_filter_H_
+#include <limits>
 
 #include "../er-pipeline.h"
-#include "../algebra/plane.h"
+#include "../application_state.h"
+#include <igl/fit_plane.h>
 
-namespace er {
-	class plants_filter: public process_unit
-	{
-	public:
-		pcl_ptr cloud_render;
+#include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/console/parse.h>
+#include <pcl/common/transforms.h>
 
-		ground_filter *grnd_filter;
+#include "ground_filter.h"
+#include "plant_extraction.h"
+#include "plant_separation.h"
 
-		plants_filter(): grnd_filter { nullptr } {};
-		~plants_filter() {};
+using namespace er;
 
-		void set_ground_filter(ground_filter *grnd_filter_);
-		bool process() override;
-		void invalidate_view() override;
-	};
+//------ Plant discovery & segmentation ------
+
+bool plants_separation_filter::process()
+{
+	cloud_out->clear();
+
+	pcl::VoxelGrid<pcl::PointXYZRGBA> sor;
+	sor.setInputCloud(cloud_in);
+	sor.setLeafSize(app_state::get().leaf_X,
+		app_state::get().leaf_Y, app_state::get().leaf_Z);
+	sor.filter(*cloud_out);
+	return true;
 }
 
-#endif
+void plants_separation_filter::invalidate_view()
+{
+	if (view != nullptr)
+		view->point_scale = er::app_state::get().scale_voxel_grid;
+	er::process_unit::invalidate_view();
+}

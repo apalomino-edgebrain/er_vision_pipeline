@@ -88,6 +88,10 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 					}
 				}
 
+				if (ImGui::MenuItem("Save", "Ctrl+S")) {
+					flush_settings(viewer);
+				}
+
 				if (ImGui::BeginMenu("Open Recent")) {
 					json j_object = app_state::get().config["recent_files"];
 
@@ -275,6 +279,19 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 			ImGui::Text("Clipping Y");
 			ImGui::SliderFloat("Min Y", &app_state::get().plant_min_Y, -0.1f, 1);
 			ImGui::SliderFloat("Max Y", &app_state::get().plant_max_Y, -0.1f, 1);
+
+			ImGui::End();
+		}
+
+		if (app_state::get().show_voxel_view) {
+			ImGui::Begin("Voxel View", &app_state::get().show_voxel_view, flags);
+
+			ImGui::Text("Leaf Size");
+			ImGui::SliderFloat("X#leaf", &app_state::get().leaf_X , 0.01f, 1);
+			ImGui::SliderFloat("Y#leaf", &app_state::get().leaf_Y,  0.01f, 1);
+			ImGui::SliderFloat("Z#leaf", &app_state::get().leaf_Z,  0.01f, 1);
+
+			ImGui::SliderFloat("Point Scale", &app_state::get().scale_voxel_grid, 0.001f, 0.005f);
 
 			ImGui::End();
 		}

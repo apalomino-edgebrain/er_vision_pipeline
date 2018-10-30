@@ -48,7 +48,7 @@ er::worker_t viewer_thread;
 //#############################################################################
 
 er::frame_data::frame_data() : f_external_render { nullptr }, initialized { false },
-visible { true }, idx { 0 }, invalidate { false }
+visible { true }, idx { 0 }, invalidate { false }, point_scale { 0 }
 {
 	cloud = pcl_ptr(new pcl::PointCloud<pcl::PointXYZRGBA>);
 }
@@ -76,7 +76,7 @@ void er::frame_data::calculate_view()
 	}
 
 	radius.resize(size);
-	radius.setConstant(er::app_state::get().point_scale);
+	radius.setConstant(er::app_state::get().point_scale + point_scale);
 
 	bbx_m = V.colwise().minCoeff();
 	bbx_M = V.colwise().maxCoeff();

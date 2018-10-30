@@ -41,13 +41,10 @@
 #endif
 
 #include "window_control.h"
-
 #include "visualizer.h"
 
 #include <pcl/kdtree/kdtree_flann.h>
-
 #include "process_3d.h"
-
 #include "application_state.h"
 
 using namespace er;
@@ -666,7 +663,7 @@ int main(int argc, char * argv[]) try {
 					layers.push_back(cloud);
 				}
 
-				//------------- VOXEL -----------------------------
+			//------------- VOXEL -----------------------------
 			pcl_ptr cloud_voxel(new pcl::PointCloud<pcl::PointXYZRGBA>);
 
 			pcl::VoxelGrid<pcl::PointXYZRGBA> sor;
@@ -741,8 +738,17 @@ int main(int argc, char * argv[]) try {
 	return EXIT_SUCCESS;
 	} catch (const rs2::error & e) {
 		std::cerr << "RealSense error calling " << e.get_failed_function() << "(" << e.get_failed_args() << "):\n    " << e.what() << std::endl;
+#ifdef WIN32
+		MessageBoxA(NULL, ("RealSense error calling!"),
+			e.what(), NULL);
+#endif
 		return EXIT_FAILURE;
 	} catch (const std::exception & e) {
 		std::cerr << e.what() << std::endl;
+#ifdef WIN32
+		MessageBoxA(NULL, ("RealSense error calling!"),
+			e.what(), NULL);
+#endif
+
 		return EXIT_FAILURE;
 	}

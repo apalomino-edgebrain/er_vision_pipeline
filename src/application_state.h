@@ -116,6 +116,14 @@ namespace er {
 		float max_clip[3] = { 0, 50, -50 };
 
 		//-----------------------------------------------
+		bool show_voxel_view = true;
+
+		float leaf_X = 0.01f;
+		float leaf_Y = 0.01f;
+		float leaf_Z = 0.01f;
+
+		float scale_voxel_grid = 0.01f;
+		//-----------------------------------------------
 		// Window views
 
 		bool show_camera_window = true;

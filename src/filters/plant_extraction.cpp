@@ -48,23 +48,12 @@ using namespace er;
 #define MAX_LUMINOSITY (150.0f*3.0f)
 #define MIN_Z 0.2f
 
-void plants_filter::input_pcl(pcl_ptr cloud)
-{
-	er::process_unit::input_pcl(cloud);
-}
-
 //------ Plant discovery & Extraction ------
 // After we align the floor
 
 bool plants_filter::process()
 {
-	if (cloud_out == nullptr) {
-		pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
-		cloud_out = cloud;
-	} else {
-		// TODO: Do not clear and reuse points
-		cloud_out->clear();
-	}
+	cloud_out->clear();
 
 	Eigen::Transform<double, 3, Eigen::Affine> ground_transform;
 	if (er::app_state::get().ground_alignment) {
@@ -120,8 +109,14 @@ bool plants_filter::process()
 			sprintf(text, "%2.2fcm", t);
 			view->render_point(viewer_ptr, pos,
 				Eigen::Vector3d { 1, 1, 1 }, text);
+
+			view->point_scale = 0.00f;
 		}
+
 	};
+
+	if (f_callback_output != nullptr)
+		f_callback_output(cloud_out);
 
 	return true;
 }
@@ -133,5 +128,10 @@ void plants_filter::set_ground_filter(ground_filter *grnd_filter_)
 
 void plants_filter::invalidate_view()
 {
-	er::process_unit::invalidate_view();
+	if (app_state::get().show_plants) {
+		view->visible = true;
+		er::process_unit::invalidate_view();
+	} else {
+		view->visible = false;
+	}
 }

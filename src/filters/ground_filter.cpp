@@ -69,15 +69,13 @@ bool ground_filter::process()
 {
 	start_process();
 
-	if (cloud_out == nullptr) {
-		pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
-		cloud_out = cloud;
+	// TODO: Do not clear and reuse points
+	cloud_out->clear();
 
+	if (cloud_render == nullptr) {
 		pcl_ptr cloud_tmp(new pcl::PointCloud<pcl::PointXYZRGBA>);
 		cloud_render = cloud_tmp;
 	} else {
-		// TODO: Do not clear and reuse points
-		cloud_out->clear();
 		cloud_render->clear();
 	}
 
@@ -257,37 +255,41 @@ bool ground_filter::process()
 			view->f_external_render = [&] (void *viewer_ptr) {
 				char text[256];
 
-				if (er::app_state::get().show_ground_plane) {
-					view->render_point(viewer_ptr, plane_centre,
-						Eigen::Vector3d { 1, 1, 1 }, "Ground Centre");
+				view->point_scale = 0.0f;
 
-					//---------------------------------------------------------
-					// Intersection with ground at 0 position to create a vector
-					Eigen::RowVector3d pos_intersection;
+				if (!er::app_state::get().show_ground_plane)
+					return;
 
-					double z_pos = ground_plane.get_z(0, 0);
-					pos_intersection << 0, 0, z_pos;
+				view->render_point(viewer_ptr, plane_centre,
+					Eigen::Vector3d { 1, 1, 1 }, "Ground Centre");
 
-					sprintf(text, "Intersection [%2.2f]", z_pos);
-					view->render_point(viewer_ptr, pos_intersection,
-						Eigen::Vector3d { 0, 1, 0 }, text);
+				//---------------------------------------------------------
+				// Intersection with ground at 0 position to create a vector
+				Eigen::RowVector3d pos_intersection;
 
-					//---------------------------------------------------------
+				double z_pos = ground_plane.get_z(0, 0);
+				pos_intersection << 0, 0, z_pos;
 
-					Eigen::RowVector3d pos;
-					double y_pos = ground_plane.get_y(0, Z_POS);
-					pos << 0, y_pos, Z_POS;
+				sprintf(text, "Intersection [%2.2f]", z_pos);
+				view->render_point(viewer_ptr, pos_intersection,
+					Eigen::Vector3d { 0, 1, 0 }, text);
 
-					double angleInRadians = std::atan2(y_pos, Z_POS - z_pos);
-					double angleInDegrees = (angleInRadians / M_PI) * 180.0;
+				//---------------------------------------------------------
 
-					sprintf(text, "Angle [%2.2f]", angleInDegrees);
-					view->render_point(viewer_ptr, pos,
-						Eigen::Vector3d { 1, 1, 0 }, text);
+				Eigen::RowVector3d pos;
+				double y_pos = ground_plane.get_y(0, Z_POS);
+				pos << 0, y_pos, Z_POS;
 
-					view->render_plane(viewer_ptr, ground_plane,
-						view->bbx_m, view->bbx_M);
-				}
+				double angleInRadians = std::atan2(y_pos, Z_POS - z_pos);
+				double angleInDegrees = (angleInRadians / M_PI) * 180.0;
+
+				sprintf(text, "Angle [%2.2f]", angleInDegrees);
+				view->render_point(viewer_ptr, pos,
+					Eigen::Vector3d { 1, 1, 0 }, text);
+
+				view->render_plane(viewer_ptr, ground_plane,
+					view->bbx_m, view->bbx_M);
+
 			};
 
 			if (f_callback_output != nullptr)

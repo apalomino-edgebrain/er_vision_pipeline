@@ -30,6 +30,7 @@
 
 #include "filters/ground_filter.h"
 #include "filters/plant_extraction.h"
+#include "filters/plant_separation.h"
 
 //-----------------------------------------------------------------------------
 // STD
@@ -45,20 +46,44 @@ using namespace std;
 #include <boost/filesystem.hpp>
 using namespace boost::filesystem;
 
+// The current pipeline is as follows:
+//
+// 1. Ground separation filter
+//    Finds what the ground is.
+//	  Separates the ground points for rendering
+//    Finds the plane in which the ground floor lives.
+//
+//	  Ground_filter Output -> Plants_filter Input
+//
+// 2. Plants filter process to segmentation
+//	  Separates plants and removes points closer to ground which might not be important
+//	  Cleans data
+//
+//	  Plants_filter Output -> Plants_Separation Input
+//
+// 3. Finds the individual plants
+//    Creates a list of plants for current frame with positions
+//    2D images
+//
 er::pipeline::pipeline()
 {
-
     printf("+ Initialize pipeline\n");
 
+	// Build a factory for this
 	er::ground_filter *ground = new er::ground_filter();
 	er::plants_filter *plants = new er::plants_filter();
+	er::plants_separation_filter *plants_extract = new er::plants_separation_filter();
 
-	auto F = std::bind(&er::plants_filter::input_pcl, plants, std::placeholders::_1);
-	ground->f_callback_output = F;
+	ground->f_callback_output =
+		std::bind(&er::plants_filter::input_pcl, plants, std::placeholders::_1);
+
 	plants->set_ground_filter(ground);
+	plants->f_callback_output =
+		std::bind(&er::plants_separation_filter::input_pcl, plants_extract, std::placeholders::_1);
 
 	process_units["ground"] = ground;
-	process_units["plant_extraction"] = plants;
+	process_units["plant_segmentation"] = plants;
+	process_units["plants_separation"] = plants_extract;
 }
 
 er::pipeline::~pipeline()
@@ -115,7 +140,10 @@ void er::process_unit::end_process()
 
 er::process_unit::process_unit() : f_callback_output { nullptr }
 {
+	pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
 
+	// This is our cloud to be reused after processing
+	cloud_out = cloud;
 }
 
 er::process_unit::~process_unit()
