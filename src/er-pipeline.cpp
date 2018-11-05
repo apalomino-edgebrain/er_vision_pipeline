@@ -222,3 +222,16 @@ void er::pipeline::process_frame(pcl_ptr cloud, std::vector<frame_data *> &data_
 		}
 	}
 }
+
+// Call to render our UIs, each process unit has the ability to render it's
+// own window on the UI. This call has to be done from the UI thread.
+
+void er::pipeline::render_ui()
+{
+	for (auto const &x : process_units) {
+		process_unit *pu = x.second;
+		if (pu->view != nullptr) {
+			pu->render_ui();
+		}
+	}
+}

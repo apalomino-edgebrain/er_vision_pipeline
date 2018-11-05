@@ -35,6 +35,21 @@
 // It generates a 2D map field of the current view and creates a list of plants
 //
 
+#include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
+#include <pcl/point_cloud.h>
+#include <pcl/console/parse.h>
+#include <pcl/common/transforms.h>
+#include <pcl/ml/kmeans.h>
+
+#include "ground_filter.h"
+#include "plant_extraction.h"
+
+#ifdef USE_IMGUI
+#include <imgui.h>
+#include "examples\opengl2_example\imgui_impl_glfw_gl2.h"
+#endif
+
 namespace er {
 	// Temporary plant type
 	enum class plant_types
@@ -45,6 +60,8 @@ namespace er {
 	class plant_processed
 	{
 	public:
+		plant_processed();
+
 		plant_types type;
 
 		// ---- 3D Space ----
@@ -56,6 +73,7 @@ namespace er {
 		// without background by asking the realsense APIs
 		void *ptr_texture;
 
+		float view_radius;
 		float view_x, view_y;
 		float view_width, view_height;
 	};
@@ -63,11 +81,19 @@ namespace er {
 	class plants_separation_filter: public process_unit
 	{
 	public:
+		pcl::PointXYZRGBA min_pt, max_pt;
+
 		plants_separation_filter() {};
 		~plants_separation_filter() {};
 
 		bool process() override;
 		void invalidate_view() override;
+
+		// Render UI code
+		std::mutex plants_mutex;
+		std::vector<plant_processed> plants;
+
+		void render_ui() override;
 	};
 }
 

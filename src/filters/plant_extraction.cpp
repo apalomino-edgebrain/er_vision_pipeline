@@ -112,7 +112,6 @@ bool plants_filter::process()
 
 			view->point_scale = 0.00f;
 		}
-
 	};
 
 	if (f_callback_output != nullptr)
@@ -134,4 +133,10 @@ void plants_filter::invalidate_view()
 	} else {
 		view->visible = false;
 	}
+}
+
+void plants_filter::render_ui()
+{
+#ifdef USE_IMGUI
+#endif
 }

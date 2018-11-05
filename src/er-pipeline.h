@@ -270,11 +270,20 @@ namespace er {
 		std::function<void(pcl_ptr)> f_callback_output;
 
 		virtual pcl_ptr output(int id);
+
+		virtual void render_ui() {};
 	};
 
     class pipeline
     {
     public:
+		// Returns a singleton containing the current pipeline
+		static pipeline &get()
+		{
+			static er::pipeline pipe;
+			return pipe;
+		}
+
 		std::map<std::string, process_unit *> process_units;
 
         pipeline();
@@ -291,6 +300,10 @@ namespace er {
 		void preconfigure_process_units(std::string process_units_path);
 
 		void process_frame(pcl_ptr cloud, std::vector<frame_data *> &data_views);
+
+		// Call to render our UIs, each process unit has the ability to render it's
+		// own window on the UI. This call has to be done from the UI thread.
+		void render_ui();
     };
 }
 

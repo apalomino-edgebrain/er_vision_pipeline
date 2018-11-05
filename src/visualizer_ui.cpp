@@ -147,8 +147,6 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 
 		ImGuiIO& io = ImGui::GetIO();
 
-		ShowAppCustomRendering(&er::app_state::get().show_plant_ui_window);
-
 		if (app_state::get().show_system_view) {
 			ImGui::Begin("System", &app_state::get().show_system_view, flags);
 
@@ -283,19 +281,6 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 			ImGui::End();
 		}
 
-		if (app_state::get().show_voxel_view) {
-			ImGui::Begin("Voxel View", &app_state::get().show_voxel_view, flags);
-
-			ImGui::Text("Leaf Size");
-			ImGui::SliderFloat("X#leaf", &app_state::get().leaf_X , 0.01f, 1);
-			ImGui::SliderFloat("Y#leaf", &app_state::get().leaf_Y,  0.01f, 1);
-			ImGui::SliderFloat("Z#leaf", &app_state::get().leaf_Z,  0.01f, 1);
-
-			ImGui::SliderFloat("Point Scale", &app_state::get().scale_voxel_grid, 0.001f, 0.005f);
-
-			ImGui::End();
-		}
-
 		if (app_state::get().show_analysis) {
 		{
 			ImGui::Begin("Analysis", &app_state::get().show_analysis, flags);
@@ -373,6 +358,9 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 			ImGui::End();
 		}
 	}
+
+	er::pipeline er_pipe = er::pipeline::get();
+	er_pipe.render_ui();
 
 	// We defer the file opening since we might break the interface by changing
 	// state.

@@ -43,6 +43,7 @@ namespace er {
 		void set_ground_filter(ground_filter *grnd_filter_);
 		bool process() override;
 		void invalidate_view() override;
+		void render_ui() override;
 	};
 }
 

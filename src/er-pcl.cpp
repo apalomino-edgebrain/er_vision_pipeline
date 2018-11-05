@@ -414,7 +414,7 @@ int main(int argc, char * argv[]) try {
 
 	pointcloud pc2;
 
-	er::pipeline er_pipe;
+	er::pipeline er_pipe = er::pipeline::get();
 
 	if (read_file)
 		er_pipe.initialize_folder(app_state::get().capture_folder);

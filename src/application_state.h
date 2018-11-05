@@ -123,6 +123,14 @@ namespace er {
 		float leaf_Z = 0.01f;
 
 		float scale_voxel_grid = 0.01f;
+
+		// Cluster algorithms
+		bool show_kmeans_cluster = true;
+		int cluster_size = 16;
+
+		bool use_voxel_grid = false;
+		bool use_octreepoint_voxel = true;
+
 		//-----------------------------------------------
 		// Window views
 

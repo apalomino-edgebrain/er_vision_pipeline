@@ -112,6 +112,9 @@ void er::app_state::json_to_config()
 	leaf_Y = config["leaf_Y"];
 	leaf_Z = config["leaf_Z"];
 	scale_voxel_grid = config["scale_voxel_grid"];
+
+	show_kmeans_cluster = config["show_kmeans_cluster"];
+	cluster_size = config["cluster_size"];
 }
 
 void er::app_state::config_to_json()
@@ -179,6 +182,9 @@ void er::app_state::config_to_json()
 	config["leaf_Y"] = leaf_Y;
 	config["leaf_Z"] = leaf_Z;
 	config["scale_voxel_grid"] = scale_voxel_grid;
+
+	config["show_kmeans_cluster"] = show_kmeans_cluster;
+	config["cluster_size"] = cluster_size;
 }
 
 void er::app_state::save_vec3f(const char *name, Eigen::Vector3f &vec)
@@ -271,7 +277,16 @@ void er::app_state::set_current_file(std::string filepath_playback)
 		capture_folder = filepath_playback;
 	}
 
-	invalidate_playback = true;
+	if (!is_regular_file(capture_bag)) {
+		std::cerr << "File doesn't exist" << filepath_playback << std::endl;
+#ifdef WIN32
+		MessageBoxA(NULL, ("File doesn't exist!"),
+			filepath_playback.c_str(), NULL);
+#endif
+		return;
+	} else {
+		invalidate_playback = true;
+	}
 
 	try {
 		json j_object = config["recent_files"];
