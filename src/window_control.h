@@ -37,15 +37,19 @@ struct rect
 // Simple font loading code //
 //////////////////////////////
 
+#ifdef WIN32
 #include "../third-party/stb_easy_font.h"
+#endif
 
 inline void draw_text(int x, int y, const char * text)
 {
+#ifdef WIN32
 	char buffer[60000]; // ~300 chars
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glVertexPointer(2, GL_FLOAT, 16, buffer);
 	glDrawArrays(GL_QUADS, 0, 4 * stb_easy_font_print((float) x, (float) (y - 7), (char *) text, nullptr, buffer, sizeof(buffer)));
 	glDisableClientState(GL_VERTEX_ARRAY);
+#endif
 }
 
 ////////////////////////
