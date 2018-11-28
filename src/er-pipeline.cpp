@@ -31,6 +31,7 @@
 #include "filters/ground_filter.h"
 #include "filters/plant_extraction.h"
 #include "filters/plant_separation.h"
+#include "filters/plant_segmentation.h"
 
 //-----------------------------------------------------------------------------
 // STD
@@ -73,17 +74,19 @@ er::pipeline::pipeline()
 	er::ground_filter *ground = new er::ground_filter();
 	er::plants_filter *plants = new er::plants_filter();
 	er::plants_separation_filter *plants_extract = new er::plants_separation_filter();
+	er::plants_segmentation_filter *plants_seg = new er::plants_segmentation_filter();
 
 	ground->f_callback_output =
 		std::bind(&er::plants_filter::input_pcl, plants, std::placeholders::_1);
 
 	plants->set_ground_filter(ground);
 	plants->f_callback_output =
-		std::bind(&er::plants_separation_filter::input_pcl, plants_extract, std::placeholders::_1);
+		std::bind(&er::plants_separation_filter::input_pcl, plants_seg, std::placeholders::_1);
 
 	process_units["ground"] = ground;
 	process_units["plant_segmentation"] = plants;
 	process_units["plants_separation"] = plants_extract;
+	process_units["plants_seg"] = plants_seg;
 }
 
 er::pipeline::~pipeline()

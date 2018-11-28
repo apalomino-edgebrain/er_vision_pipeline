@@ -115,6 +115,9 @@ void er::app_state::json_to_config()
 
 	show_kmeans_cluster = config["show_kmeans_cluster"];
 	cluster_size = config["cluster_size"];
+
+	floor_project_x = config["floor_project_x"];
+	floor_project_y = config["floor_project_y"];
 }
 
 void er::app_state::config_to_json()
@@ -185,6 +188,9 @@ void er::app_state::config_to_json()
 
 	config["show_kmeans_cluster"] = show_kmeans_cluster;
 	config["cluster_size"] = cluster_size;
+
+	config["floor_project_x"] = floor_project_x;
+	config["floor_project_y"] = floor_project_y;
 }
 
 void er::app_state::save_vec3f(const char *name, Eigen::Vector3f &vec)

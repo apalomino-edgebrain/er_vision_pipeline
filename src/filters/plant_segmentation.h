@@ -20,16 +20,16 @@
 							`-+shdNMMMMMMMNmdyo/.
 									`````*/
 //#############################################################################
-// Filter to use clusters to find plants
+// Filter to use raw algorithms on the data to find the plants.
 //#############################################################################
 
-#ifndef plant_separation_filter_H_
-#define plant_separation_filter_H_
+#ifndef plant_segmentation_filter_H_
+#define plant_segmentation_filter_H_
 
 #include "../er-pipeline.h"
 #include "../algebra/plane.h"
 
-// This class does the individual plant separation so we can display each
+// This class does the individual plant segmentation so we can display each
 // plant independently and start doing calculations on them.
 //
 // It generates a 2D map field of the current view and creates a list of plants
@@ -51,14 +51,28 @@
 #include "examples\opengl2_example\imgui_impl_glfw_gl2.h"
 #endif
 
+// Fast and dirty implementation for a 2.5d image analisis
+// to find the different plants.
+
+#define FLOOR_SIZE_W 64
+#define FLOOR_SIZE_H 64
+
 namespace er {
-	class plants_separation_filter: public process_unit
+	class plants_segmentation_filter: public process_unit
 	{
 	public:
+		// Texture to display
+		uint32_t size_w;
+		uint32_t size_h;
+		unsigned int tex_id;
+
+		uint32_t *tex_floor_rgba;
+		float *floor_projection;
+
 		pcl::PointXYZRGBA min_pt, max_pt;
 
-		plants_separation_filter() {};
-		~plants_separation_filter() {};
+		plants_segmentation_filter();
+		~plants_segmentation_filter();
 
 		bool process() override;
 		void invalidate_view() override;

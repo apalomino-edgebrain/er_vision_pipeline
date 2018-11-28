@@ -132,6 +132,10 @@ namespace er {
 		bool use_octreepoint_voxel = true;
 
 		//-----------------------------------------------
+		bool use_erosion = false;
+		float erosion_resolution = 0.5f;
+
+		//-----------------------------------------------
 		// Window views
 
 		bool show_camera_window = true;
@@ -158,6 +162,14 @@ namespace er {
 		float rot_x = 0.0f;
 		float rot_y = 0.0f;
 		float rot_z = 0.0f;
+
+		//-----------------------------------------------
+		// We reproject the floor into a texture 2.5d map
+
+		bool show_image_view = true;
+
+		float floor_project_x = 0;
+		float floor_project_y = 0;
 
 		//-----------------------------------------------
 		bool playing = true;

@@ -20,54 +20,38 @@
 							`-+shdNMMMMMMMNmdyo/.
 									`````*/
 //#############################################################################
-// Filter to use clusters to find plants
+// Just a simple plant definition to expand on it
 //#############################################################################
 
-#ifndef plant_separation_filter_H_
-#define plant_separation_filter_H_
-
-#include "../er-pipeline.h"
-#include "../algebra/plane.h"
-
-// This class does the individual plant separation so we can display each
-// plant independently and start doing calculations on them.
-//
-// It generates a 2D map field of the current view and creates a list of plants
-//
-
-#include <pcl/io/pcd_io.h>
-#include <pcl/io/ply_io.h>
-#include <pcl/point_cloud.h>
-#include <pcl/console/parse.h>
-#include <pcl/common/transforms.h>
-#include <pcl/ml/kmeans.h>
-
-#include "ground_filter.h"
-#include "plant_definition.h"
-#include "plant_extraction.h"
-
-#ifdef USE_IMGUI
-#include <imgui.h>
-#include "examples\opengl2_example\imgui_impl_glfw_gl2.h"
-#endif
+#ifndef plant_definition_filter_H_
+#define plant_definition_filter_H_
 
 namespace er {
-	class plants_separation_filter: public process_unit
+	// Temporary plant type
+	enum class plant_types
+	{
+		crop, weed
+	};
+
+	class plant_definition
 	{
 	public:
-		pcl::PointXYZRGBA min_pt, max_pt;
+		plant_definition();
 
-		plants_separation_filter() {};
-		~plants_separation_filter() {};
+		plant_types type;
 
-		bool process() override;
-		void invalidate_view() override;
+		// ---- 3D Space ----
+		float pos_x, pos_y;
+		float width, height;
 
-		// Render UI code
-		std::mutex plants_mutex;
-		std::vector<plant_definition> plants;
+		// ---- 2D Images ----
+		// We resolve the U,V coordinates and we extract the plant as a 2D image
+		// without background by asking the realsense APIs
+		void *ptr_texture;
 
-		void render_ui() override;
+		float view_radius;
+		float view_x, view_y;
+		float view_width, view_height;
 	};
 }
 

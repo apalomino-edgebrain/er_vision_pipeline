@@ -33,6 +33,7 @@
 #include <pcl/octree/octree_pointcloud_voxelcentroid.h>
 #include <pcl/octree/octree_pointcloud.h>
 #include <pcl/octree/octree_impl.h>
+#include <pcl/filters/impl/morphological_filter.hpp>
 
 #include <vtkLineSource.h>
 #include <vtkTubeFilter.h>
@@ -44,75 +45,67 @@
 #include <vtkPlaneSource.h>
 #include <vtkCubeSource.h>
 
+#ifdef USE_IMGUI
+#include <GL/gl3w.h>
+#include <GLFW/glfw3.h>
+#endif
+
 using namespace pcl;
 
 #include "../er-pipeline.h"
 #include "../application_state.h"
 
-#include "plant_separation.h"
+#include "plant_segmentation.h"
 
 using namespace er;
 
+//------ Definition of a detected plant ------
+
+plant_definition::plant_definition()
+{
+//	printf("+ Plant processed\n");
+}
+
 //------ Plant discovery & segmentation ------
 
-bool plants_separation_filter::process()
+plants_segmentation_filter::plants_segmentation_filter(): tex_id (0)
+{
+	size_w = app_state::get().floor_project_x;
+	size_h = app_state::get().floor_project_y;
+
+	if (size_w == 0) {
+		size_w = FLOOR_SIZE_W;
+		app_state::get().floor_project_x = size_w;
+	}
+
+	if (size_h == 0) {
+		size_h = FLOOR_SIZE_H;
+		app_state::get().floor_project_y = size_h;
+	}
+
+	uint32_t len = size_w * size_h;
+	floor_projection = new float[len];
+
+	// Raw texture to render in OpenGL for debugging purposes
+	tex_floor_rgba = new uint32_t[len];
+
+	memset(tex_floor_rgba, 0x11, sizeof(uint32_t) * len);
+}
+
+plants_segmentation_filter::~plants_segmentation_filter()
+{
+	delete floor_projection;
+}
+
+bool plants_segmentation_filter::process()
 {
 	cloud_out->clear();
 
 	/*
-	//------------------------------------------------------------------------
-	// Find Oriented BBX
-	// http://codextechnicanum.blogspot.com/2015/04/find-minimum-oriented-bounding-box-of.html
-
-	Eigen::Vector4f centroid;
-	pcl::compute3DCentroid(*cloud_in, centroid);
-	Eigen::Matrix3f covariance;
-	computeCovarianceMatrixNormalized(*cloud_in, centroid, covariance);
-	Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eigen_solver(covariance, Eigen::ComputeEigenvectors);
-	Eigen::Matrix3f eigDx = eigen_solver.eigenvectors();
-	eigDx.col(2) = eigDx.col(0).cross(eigDx.col(1));
-
-	// move the points to the that reference frame
-	Eigen::Matrix4f p2w(Eigen::Matrix4f::Identity());
-	p2w.block<3, 3>(0, 0) = eigDx.transpose();
-	p2w.block<3, 1>(0, 3) = -1.f * (p2w.block<3, 3>(0, 0) * centroid.head<3>());
-	pcl::PointCloud<pcl::PointXYZRGBA> cPoints;
-	pcl::transformPointCloud(*cloud_in, cPoints, p2w);
-
-	pcl::getMinMax3D(cPoints, min_pt, max_pt);
-	const Eigen::Vector3f mean_diag = 0.5f*(max_pt.getVector3fMap() + min_pt.getVector3fMap());
-
-	// final transform
-	const Eigen::Quaternionf rotation(eigDx);
-	const Eigen::Vector3f translation = eigDx*mean_diag + centroid.head<3>();
-
-	double width = max_pt.x - min_pt.x;
-	double height = max_pt.y - min_pt.y;
-	double depth = max_pt.z - min_pt.z;
-
-	// coefficients = [Tx, Ty, Tz, Qx, Qy, Qz, Qw, width, height, depth]
-
-	vtkSmartPointer<vtkTransform> t = vtkSmartPointer<vtkTransform>::New();
-	t->Identity();
-	t->Translate(translation.x(), translation.y(), translation.z());
-
-	Eigen::AngleAxisf a(rotation);
-	t->RotateWXYZ(pcl::rad2deg(a.angle()), a.axis()[0], a.axis()[1], a.axis()[2]);
-
-	vtkSmartPointer<vtkCubeSource> cube = vtkSmartPointer<vtkCubeSource>::New();
-	cube->SetXLength(width);
-	cube->SetYLength(height);
-	cube->SetZLength(depth);
-
-	vtkSmartPointer<vtkTransformPolyDataFilter> tf = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
-	tf->SetTransform(t);
-	tf->SetInputConnection(cube->GetOutputPort());
-	tf->Update();
-
-	vtkSmartPointer<vtkDataSet> dataset = tf->GetOutput();
-
-	// End Oriented BBX
-	//------------------------------------------------------------------------
+	template <typename PointT> void
+		pcl::applyMorphologicalOperator(const typename pcl::PointCloud<PointT>::ConstPtr &cloud_in,
+			float resolution, const int morphological_operator,
+			pcl::PointCloud<PointT> &cloud_out)
 	*/
 
 	if (app_state::get().use_octreepoint_voxel) {
@@ -145,6 +138,42 @@ bool plants_separation_filter::process()
 		return true;
 	}
 
+	if (app_state::get().use_erosion) {
+		pcl::applyMorphologicalOperator<pcl::PointXYZRGBA>(cloud_in,
+			app_state::get().erosion_resolution, MORPH_ERODE, *cloud_out);
+	}
+
+	uint32_t len = size_w * size_h;
+	memset(tex_floor_rgba, 0x0, sizeof(uint32_t) * len);
+	memset(floor_projection, 0x0, sizeof(float) * len);
+
+	for (size_t i = 0; i < cloud_in->points.size(); i++) {
+		float x = cloud_in->points[i].x * 0.5f;
+		float y = cloud_in->points[i].y;
+		float z = (cloud_in->points[i].z);
+
+		int pos_x = size_w / 2 - x * size_w;
+		int pos_y = size_h - z * size_h;
+
+		int pos = pos_x + pos_y * size_w;
+		if (pos > 0 && pos < len) {
+			floor_projection[pos] += y;
+		}
+	}
+
+	// Find the moving average and find the points where we have the maximum
+	// Run a correlation filtering on the image.
+
+	int pos = 0;
+	for (uint32_t y = 0; y < size_h; y++) {
+		for (uint32_t x = 0; x < size_w; x++) {
+			if (floor_projection[pos + x] > 0) {
+				tex_floor_rgba[pos + x] = 0xFFFFFFFF;
+			}
+		}
+
+		pos += size_w;
+	}
 
 	if (view != nullptr)
 		view->f_external_render = [&] (void *viewer_ptr) {
@@ -207,7 +236,7 @@ bool plants_separation_filter::process()
 	return true;
 }
 
-void plants_separation_filter::invalidate_view()
+void plants_segmentation_filter::invalidate_view()
 {
 	if (view != nullptr)
 		view->point_scale = er::app_state::get().scale_voxel_grid;
@@ -217,10 +246,58 @@ void plants_separation_filter::invalidate_view()
 
 #define BED_SIZE 3
 
-void plants_separation_filter::render_ui()
+void plants_segmentation_filter::render_ui()
 {
 #ifdef USE_IMGUI
 	static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
+
+	if (app_state::get().show_image_view) {
+
+		if (tex_id == 0) {
+			glGenTextures(1, &tex_id);
+		}
+
+		glBindTexture(GL_TEXTURE_2D, tex_id);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+
+		glTexImage2D(GL_TEXTURE_2D,     // Type of texture
+			0,							// Pyramid level (for mip-mapping) - 0 is the top level
+			GL_RGBA,					// Internal colour format to convert to
+			size_w, size_h,				// texture size
+			0,							// Border width in pixels (can either be 1 or 0)
+			GL_RGBA,					// Input image format (i.e. GL_RGB, GL_RGBA, GL_BGR etc.)
+			GL_UNSIGNED_BYTE,			// Image data type
+			tex_floor_rgba);			// The actual image data itself
+
+		ImGui::Begin("2D View", &app_state::get().show_image_view, flags);
+		ImGui::TextWrapped("Show 2.5d image");
+
+		ImGui::Image((ImTextureID) tex_id, ImVec2(size_w/2, size_h/2));
+
+		if (ImGui::IsItemHovered()) {
+			ImGui::BeginTooltip();
+
+			ImGuiIO& io = ImGui::GetIO();
+
+			ImVec2 pos = ImGui::GetCursorScreenPos();
+
+			float region_sz = 32.0f;
+			float region_x = io.MousePos.x - pos.x - region_sz * 0.5f; if (region_x < 0.0f) region_x = 0.0f; else if (region_x > size_w - region_sz) region_x = size_w - region_sz;
+			float region_y = io.MousePos.y - pos.y - region_sz * 0.5f; if (region_y < 0.0f) region_y = 0.0f; else if (region_y > size_h - region_sz) region_y = size_h - region_sz;
+			float zoom = 4.0f;
+			ImGui::Text("Min: (%.2f, %.2f)", region_x, region_y);
+			ImGui::Text("Max: (%.2f, %.2f)", region_x + region_sz, region_y + region_sz);
+			ImVec2 uv0 = ImVec2((region_x) / size_w, (region_y) / size_h);
+			ImVec2 uv1 = ImVec2((region_x + region_sz) / size_w, (region_y + region_sz) / size_h);
+			ImGui::Image((ImTextureID) tex_id, ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, ImColor(255, 255, 255, 255), ImColor(255, 255, 255, 128));
+			ImGui::EndTooltip();
+		}
+		ImGui::End();
+	}
 
 	if (app_state::get().show_voxel_view) {
 		ImGui::Begin("Voxel View", &app_state::get().show_voxel_view, flags);
@@ -229,6 +306,14 @@ void plants_separation_filter::render_ui()
 
 		ImGui::Checkbox("Show cluster centres", &app_state::get().show_kmeans_cluster);
 		ImGui::SliderInt("Cluster size", &app_state::get().cluster_size, 1, 64);
+
+		if (ImGui::Checkbox("Use Erosion", &app_state::get().use_erosion)) {
+			//app_state::get().use_octreepoint_voxel = false;
+			//app_state::get().use_voxel_grid = false;
+		}
+
+		ImGui::Text("Erosion Value");
+		ImGui::SliderFloat("Erosion", &app_state::get().erosion_resolution, 0.01f, 1);
 
 		if (ImGui::Checkbox("Octree Voxel", &app_state::get().use_octreepoint_voxel)) {
 			app_state::get().use_octreepoint_voxel = true;
