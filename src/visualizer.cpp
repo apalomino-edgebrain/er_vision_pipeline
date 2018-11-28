@@ -90,7 +90,12 @@ void er::frame_data::render(void *viewer_ptr)
 	std::lock_guard<std::mutex> lock(mtx);
 	igl::opengl::glfw::Viewer *viewer = (igl::opengl::glfw::Viewer *) viewer_ptr;
 
+#ifdef WIN32
 	viewer->data().set_points(V, C, radius);
+#else
+	viewer->data().set_points(V, C);
+#endif
+
 	id_mesh = viewer->data().id;
 	viewer->append_mesh();
 
@@ -173,10 +178,14 @@ void er::frame_data::render_point(void *viewer_ptr,
 	Eigen::MatrixXd C(1, 3);
 	C << color[0], color[1], color[2];
 
+#ifdef WIN32
 	Eigen::VectorXd radius(1);
 	radius.setConstant(er::app_state::get().point_scale * 10.5);
-
+	// We use a shader to show radius on the windows version
 	viewer->data().set_points(V, C, radius);
+#else
+	viewer->data().set_points(V, C);
+#endif
 	viewer->append_mesh();
 }
 
@@ -238,11 +247,14 @@ void er::worker_t::add_axis()
 	Eigen::MatrixXi E_axis(3, 2);
 	E_axis << 0, 1, 0, 2, 0, 3;
 
+	// Plot the corners of the bounding box as points
+#ifdef WIN32
 	Eigen::VectorXd radius(V_axis.rows());
 	radius.setConstant(er::app_state::get().point_scale * 2.5 * viewer.core.camera_base_zoom);
-
-	// Plot the corners of the bounding box as points
 	viewer.data().add_points(V_axis, Eigen::RowVector3d(1, 0, 0), radius);
+#else
+	viewer.data().add_points(V_axis, Eigen::RowVector3d(1, 0, 0));
+#endif
 
 	// Plot labels with the coordinates of bounding box vertices
 	Eigen::Vector3d x(1, 0, 0);
@@ -366,6 +378,7 @@ void er::worker_t::start()
 	// Just a basic testing Grid
 	//
 	{
+/*
 		Eigen::MatrixXd V, C;
 		Eigen::MatrixXi F;
 
@@ -380,6 +393,7 @@ void er::worker_t::start()
 		viewer.data().set_mesh(V, F);
 		//viewer.data().set_colors(C);
 		viewer.append_mesh();
+*/
 	}
 
 	// Loads a plane grid for testing purposes
@@ -406,7 +420,7 @@ void er::worker_t::start()
 
 	add_axis();
 
-	viewer.callback_init = [&] (auto viewer_) {
+	viewer.callback_init = [&] (igl::opengl::glfw::Viewer &viewer_) {
 		printf("Setting up camera!\n");
 
 		// Position the camera in our reference frame
@@ -428,12 +442,12 @@ void er::worker_t::start()
 		return false;
 	};
 
-	viewer.callback_pre_draw = [&] (auto viewer_) {
+	viewer.callback_pre_draw = [&] (igl::opengl::glfw::Viewer &viewer_) {
 		return false;
 	};
 
 	// Thread were we check to see if we have to invalidate the pointcloud
-	viewer.callback_post_draw = [&] (auto viewer_) {
+	viewer.callback_post_draw = [&] (igl::opengl::glfw::Viewer &viewer_) {
 		initialized = true;
 		// Position the camera in our reference frame
 		compute_cloud();

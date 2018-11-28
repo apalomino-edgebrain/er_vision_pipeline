@@ -40,7 +40,10 @@
 #include <pcl/point_cloud.h>
 #include <pcl/console/parse.h>
 #include <pcl/common/transforms.h>
+
+#ifdef USE_PCL_1_8_0
 #include <pcl/ml/kmeans.h>
+#endif
 
 #include "ground_filter.h"
 #include "plant_definition.h"

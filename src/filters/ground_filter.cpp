@@ -260,8 +260,10 @@ bool ground_filter::process()
 				if (!er::app_state::get().show_ground_plane)
 					return;
 
+				Eigen::Vector3d white = { 1, 1, 1 };
+
 				view->render_point(viewer_ptr, plane_centre,
-					Eigen::Vector3d { 1, 1, 1 }, "Ground Centre");
+					white, "Ground Centre");
 
 				//---------------------------------------------------------
 				// Intersection with ground at 0 position to create a vector
@@ -270,9 +272,11 @@ bool ground_filter::process()
 				double z_pos = ground_plane.get_z(0, 0);
 				pos_intersection << 0, 0, z_pos;
 
+				Eigen::Vector3d green = { 0, 1, 0 };
+
 				sprintf(text, "Intersection [%2.2f]", z_pos);
 				view->render_point(viewer_ptr, pos_intersection,
-					Eigen::Vector3d { 0, 1, 0 }, text);
+					green, text);
 
 				//---------------------------------------------------------
 
@@ -283,9 +287,11 @@ bool ground_filter::process()
 				double angleInRadians = std::atan2(y_pos, Z_POS - z_pos);
 				double angleInDegrees = (angleInRadians / M_PI) * 180.0;
 
+				Eigen::Vector3d color = { 1, 1, 0 };
+
 				sprintf(text, "Angle [%2.2f]", angleInDegrees);
 				view->render_point(viewer_ptr, pos,
-					Eigen::Vector3d { 1, 1, 0 }, text);
+					color, text);
 
 				view->render_plane(viewer_ptr, ground_plane,
 					view->bbx_m, view->bbx_M);

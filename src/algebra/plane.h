@@ -88,12 +88,12 @@ struct plane
 	//
 	// Accessors
 	//
-	__forceinline Eigen::Vector3d plane::Normal() const
+	inline Eigen::Vector3d Normal() const
 	{
 		return Eigen::Vector3d(a, b, c);
 	}
 
-	__forceinline plane Flip()
+	inline plane Flip()
 	{
 		plane Result;
 		Result.a = -a;

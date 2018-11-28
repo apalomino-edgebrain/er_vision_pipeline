@@ -148,6 +148,7 @@ bool plants_separation_filter::process()
 
 	if (view != nullptr)
 		view->f_external_render = [&] (void *viewer_ptr) {
+#ifdef USE_PCL_1_8_0
 		if (!app_state::get().show_kmeans_cluster)
 			return;
 
@@ -201,7 +202,7 @@ bool plants_separation_filter::process()
 		sprintf(text, "MAX (%2.2f, %2.2f, %2.2f)", max_.x(), max_.y(), max_.z());
 		view->render_point(viewer_ptr, max_,
 			Eigen::Vector3d { 1, 0, 1 }, text);
-
+#endif
 	};
 
 	return true;

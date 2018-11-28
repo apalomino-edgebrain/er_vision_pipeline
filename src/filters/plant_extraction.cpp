@@ -107,8 +107,10 @@ bool plants_filter::process()
 			pos << 0.0f, t, 0.5f;
 
 			sprintf(text, "%2.2fcm", t);
+			Eigen::Vector3d color = { 1, 1, 1 };
+
 			view->render_point(viewer_ptr, pos,
-				Eigen::Vector3d { 1, 1, 1 }, text);
+				color, text);
 
 			view->point_scale = 0.00f;
 		}

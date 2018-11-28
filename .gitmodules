@@ -1,3 +1,9 @@
 [submodule "libs/imgui"]
 	path = libs/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "libs/pcl"]
+	path = libs/pcl
+	url = https://github.com/PointCloudLibrary/pcl.git
+[submodule "libs/libigl"]
+	path = libs/libigl
+	url = https://github.com/libigl/libigl.git
