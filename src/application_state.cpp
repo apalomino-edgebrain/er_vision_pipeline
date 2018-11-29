@@ -40,6 +40,7 @@ er::app_state::app_state()
 	config["compilation"] = __DATE__ __TIME__;
 	printf("+ Initialize pipeline\n");
 	load_configuration(DEFAULT_CONFIG);
+	printf_h2("Finished Init");
 }
 
 er::app_state::~app_state()
@@ -274,6 +275,7 @@ void er::app_state::save_configuration()
 
 void er::app_state::set_current_file(std::string filepath_playback)
 {
+	printf("Set current file\n");
 	path data_path(filepath_playback);
 	if (!is_directory(data_path)) {
 		capture_bag = filepath_playback;

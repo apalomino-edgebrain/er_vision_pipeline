@@ -362,12 +362,14 @@ int main(int argc, char * argv[]) try {
 		app_state::get().set_current_file(file_record);
 		app_state::get().invalidate_playback = false;
 		read_file = true;
+
 	} else {
-		std::cout << "TODO: Ask for a file!" << std::endl;
 		//std::string fname = igl::file_dialog_open();
 
-		//if (fname.length() == 0)
-		//	return;
+		std::cout << "Not enough parameters." << std::endl << std::endl;
+		std::cout << "Use example: " << std::endl;
+		std::cout << "  er-vision ~/data/8799ecf/180904_135414/capture.bag" << std::endl;
+		return -1;
 	}
 
 	Eigen::initParallel();
