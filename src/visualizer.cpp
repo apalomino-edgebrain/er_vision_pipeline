@@ -90,7 +90,7 @@ void er::frame_data::render(void *viewer_ptr)
 	std::lock_guard<std::mutex> lock(mtx);
 	igl::opengl::glfw::Viewer *viewer = (igl::opengl::glfw::Viewer *) viewer_ptr;
 
-#ifdef WIN32
+#ifdef USE_POINT_SIZE
 	viewer->data().set_points(V, C, radius);
 #else
 	viewer->data().set_points(V, C);
@@ -178,14 +178,15 @@ void er::frame_data::render_point(void *viewer_ptr,
 	Eigen::MatrixXd C(1, 3);
 	C << color[0], color[1], color[2];
 
-#ifdef WIN32
+#ifdef USE_POINT_SIZE
 	Eigen::VectorXd radius(1);
 	radius.setConstant(er::app_state::get().point_scale * 10.5);
-	// We use a shader to show radius on the windows version
+
 	viewer->data().set_points(V, C, radius);
 #else
 	viewer->data().set_points(V, C);
 #endif
+
 	viewer->append_mesh();
 }
 
@@ -247,10 +248,11 @@ void er::worker_t::add_axis()
 	Eigen::MatrixXi E_axis(3, 2);
 	E_axis << 0, 1, 0, 2, 0, 3;
 
-	// Plot the corners of the bounding box as points
-#ifdef WIN32
+#ifdef USE_POINT_SIZE
 	Eigen::VectorXd radius(V_axis.rows());
 	radius.setConstant(er::app_state::get().point_scale * 2.5 * viewer.core.camera_base_zoom);
+
+	// Plot the corners of the bounding box as points
 	viewer.data().add_points(V_axis, Eigen::RowVector3d(1, 0, 0), radius);
 #else
 	viewer.data().add_points(V_axis, Eigen::RowVector3d(1, 0, 0));
@@ -378,7 +380,6 @@ void er::worker_t::start()
 	// Just a basic testing Grid
 	//
 	{
-/*
 		Eigen::MatrixXd V, C;
 		Eigen::MatrixXi F;
 
@@ -393,7 +394,6 @@ void er::worker_t::start()
 		viewer.data().set_mesh(V, F);
 		//viewer.data().set_colors(C);
 		viewer.append_mesh();
-*/
 	}
 
 	// Loads a plane grid for testing purposes
@@ -429,14 +429,18 @@ void er::worker_t::start()
 
 		// Load camera position
 
-		viewer.core.camera_translation = app_state::get().load_vec3f("camera_translation");
+		try {
+			viewer.core.camera_translation = app_state::get().load_vec3f("camera_translation");
+			Eigen::Vector4f v4 = app_state::get().load_vec4f("trackball_angle");
+			viewer.core.trackball_angle = Eigen::Quaternionf(v4.w(), v4.x(), v4.y(), v4.z());
+			viewer.core.camera_zoom = app_state::get().config["camera_zoom"];
+		} catch (const std::exception &e) {
+			printf(" No default config ");
+		}
 
-		Eigen::Vector4f v4 = app_state::get().load_vec4f("trackball_angle");
-		viewer.core.trackball_angle = Eigen::Quaternionf( v4.w(), v4.x(), v4.y(), v4.z() );
-
-		viewer.core.camera_zoom = app_state::get().config["camera_zoom"];
 		if (viewer.core.camera_zoom == 0) {
 			printf(" No camera info, we should default to normal one");
+			viewer.core.camera_zoom = 1.0f;
 		}
 
 		return false;

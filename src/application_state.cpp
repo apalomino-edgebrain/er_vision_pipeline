@@ -199,16 +199,13 @@ void er::app_state::save_vec3f(const char *name, Eigen::Vector3f &vec)
 	config[name] = { vec(0), vec(1), vec(2) };
 }
 
+// Throws an exception in case there is no vec3f on disk
 Eigen::Vector3f er::app_state::load_vec3f(const char *name)
 {
 	Eigen::Vector3f out;
-	try {
-		out[0] = config[name][0];
-		out[1] = config[name][1];
-		out[2] = config[name][2];
-	} catch (const std::exception & e) {
-
-	}
+	out[0] = config[name][0];
+	out[1] = config[name][1];
+	out[2] = config[name][2];
 	return out;
 }
 
@@ -231,17 +228,14 @@ void er::app_state::save_vec4f(const char *name, Eigen::Vector4f &vec)
 	config[name] = { vec(0), vec(1), vec(2), vec(3) };
 }
 
+// Throws an exception in case there is no vec4f
 Eigen::Vector4f er::app_state::load_vec4f(const char *name)
 {
 	Eigen::Vector4f out;
-	try {
-		out[0] = config[name][0];
-		out[1] = config[name][1];
-		out[2] = config[name][2];
-		out[3] = config[name][3];
-	} catch (const std::exception & e) {
-		printf("Exception");
-	}
+	out[0] = config[name][0];
+	out[1] = config[name][1];
+	out[2] = config[name][2];
+	out[3] = config[name][3];
 	return out;
 }
 
