@@ -35,11 +35,6 @@
 // UI DRAWING
 //-----------------------------------------------------------------------------
 
-#ifdef REALSENSE_USE_IMGUI
-#include <imgui.h>
-#include "examples\opengl2_example\imgui_impl_glfw_gl2.h"
-#endif
-
 #include "window_control.h"
 #include "visualizer.h"
 
@@ -338,12 +333,6 @@ int main(int argc, char * argv[]) try {
 
 	// Create a simple OpenGL window for rendering:
 	window app(1280, 720, "Earth Rover PCL Pipeline");
-
-#ifdef REALSENSE_USE_IMGUI
-	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO(); (void) io;
-	ImGui_ImplGlfwGL2_Init(app, true);
-#endif
 
 	// Construct an object to manage view state
 	state app_state;

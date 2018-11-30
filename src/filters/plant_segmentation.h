@@ -51,7 +51,6 @@
 
 #ifdef USE_IMGUI
 #include <imgui.h>
-#include "examples\opengl2_example\imgui_impl_glfw_gl2.h"
 #endif
 
 // Fast and dirty implementation for a 2.5d image analisis
