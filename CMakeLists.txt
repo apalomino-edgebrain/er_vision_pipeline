@@ -17,6 +17,15 @@ elseif(COMPILER_SUPPORTS_CXX0X)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 endif()
 
+# Removing some warnings from char * assignments and unused stuff from libigl
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-write-strings -Wno-unused-result -Wno-deprecated-declarations")
+
+# I know!! I have an int that is a texture pointer!!! fuck me, right?
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-int-to-pointer-cast")
+
+set(CMAKE_BUILD_TYPE Release)
+add_definitions( -DUSE_IMGUI )
+
 find_package( PCL REQUIRED )
 
 if (PCL_FOUND)
@@ -67,5 +76,8 @@ include_directories("libs/libigl/external/glad/include/")
 include_directories("libs/libigl/external/imgui")
 include_directories("libs/libigl/external/imgui/examples/")
 include_directories("libs/libigl/external/libigl-imgui/")
+include_directories("libs/libigl/external/glfw/include/")
+include_directories("libs/libigl/external/imgui/examples/libs/gl3w/")
+
 
 add_subdirectory(src)

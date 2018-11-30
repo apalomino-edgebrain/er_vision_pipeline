@@ -251,7 +251,7 @@ void plants_segmentation_filter::render_ui()
 {
 #ifdef USE_IMGUI
 	static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
-
+/*
 	if (app_state::get().show_image_view) {
 
 		if (tex_id == 0) {
@@ -299,7 +299,7 @@ void plants_segmentation_filter::render_ui()
 		}
 		ImGui::End();
 	}
-
+*/
 	if (app_state::get().show_voxel_view) {
 		ImGui::Begin("Voxel View", &app_state::get().show_voxel_view, flags);
 
