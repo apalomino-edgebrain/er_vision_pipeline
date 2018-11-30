@@ -397,7 +397,7 @@ void er::worker_t::start()
 	}
 
 	// Loads a plane grid for testing purposes
-	/*
+#ifdef WIN32
 	{
 		Eigen::MatrixXd V, C;
 		Eigen::MatrixXi F;
@@ -412,8 +412,7 @@ void er::worker_t::start()
 
 		viewer.data().set_points(V, C, radius);
 	}
-
-	*/
+#endif
 	//------------------------------------------------------------
 
 	initialize_visualizer_ui(viewer);

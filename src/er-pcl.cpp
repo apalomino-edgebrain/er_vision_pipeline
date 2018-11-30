@@ -227,47 +227,6 @@ float3 colors[] { { 0.8f, 0.1f, 0.3f },
 
 using namespace rs2;
 
-class er_pointcloud : public options
-{
-public:
-	er_pointcloud() : _queue(1)
-	{
-		rs2_error* e = nullptr;
-
-		auto pb = std::shared_ptr<rs2_processing_block>(
-			rs2_create_pointcloud(&e),
-			rs2_delete_processing_block);
-		_block = std::make_shared<processing_block>(pb);
-
-		error::handle(e);
-
-		// Redirect options API to the processing block
-		options::operator=(pb);
-
-		_block->start(_queue);
-	}
-
-	points calculate(frame depth)
-	{
-		_block->invoke(std::move(depth));
-		rs2::frame f;
-		if (!_queue.poll_for_frame(&f))
-			throw std::runtime_error("Error occured during execution of the processing block! See the log for more info");
-		return points(f);
-	}
-
-	void map_to(frame mapped)
-	{
-		_block->set_option(RS2_OPTION_TEXTURE_SOURCE, float(mapped.get_profile().unique_id()));
-		_block->invoke(std::move(mapped));
-	}
-private:
-	friend class context;
-
-	std::shared_ptr<processing_block> _block;
-	frame_queue _queue;
-};
-
 void draw_polygons(window& app, state& app_state)
 {
 	// OpenGL commands that prep screen for the pointcloud
@@ -411,8 +370,8 @@ int main(int argc, char * argv[]) try {
 
 	std::vector<pcl_ptr> layers;
 
-	er_pointcloud pc;
-	er_pointcloud pc2;
+	rs2::pointcloud pc;
+	rs2::pointcloud pc2;
 
 	er::pipeline er_pipe = er::pipeline::get();
 
