@@ -6,4 +6,4 @@
 	url = https://github.com/PointCloudLibrary/pcl.git
 [submodule "libs/libigl"]
 	path = libs/libigl
-	url = git@github.com/sergioamr/libigl.git
+	url = git@github.com:sergioamr/libigl.git
