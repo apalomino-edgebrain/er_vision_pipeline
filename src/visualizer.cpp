@@ -434,7 +434,7 @@ void er::worker_t::start()
 			viewer.core.trackball_angle = Eigen::Quaternionf(v4.w(), v4.x(), v4.y(), v4.z());
 			viewer.core.camera_zoom = app_state::get().config["camera_zoom"];
 		} catch (const std::exception &e) {
-			printf(" No default config ");
+			printf(" No default config\n");
 		}
 
 		if (viewer.core.camera_zoom == 0) {
