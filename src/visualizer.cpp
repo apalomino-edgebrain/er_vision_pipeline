@@ -374,11 +374,13 @@ void er::worker_t::start()
 	// Just to check that we are have a functional libIGL.
 
 	// TODO: This thread will crash if the window is not created on time.
-	boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+	boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
 
 	//------------------------------------------------------------
 	// Just a basic testing Grid
 	//
+
+/*
 	{
 		Eigen::MatrixXd V, C;
 		Eigen::MatrixXi F;
@@ -395,7 +397,7 @@ void er::worker_t::start()
 		//viewer.data().set_colors(C);
 		viewer.append_mesh();
 	}
-
+*/
 	// Loads a plane grid for testing purposes
 #ifdef WIN32
 	{
