@@ -347,13 +347,13 @@ int main(int argc, char * argv[]) try {
 	bool read_file = false;
 
 	rs2::config cfg;
+	cfg.enable_stream(RS2_STREAM_DEPTH, 640, 480, RS2_FORMAT_Z16, 15);
+	cfg.enable_stream(RS2_STREAM_INFRARED, 640, 480, RS2_FORMAT_Y8, 15);
+	cfg.enable_stream(RS2_STREAM_COLOR, 1280, 720, RS2_FORMAT_RGB8, 15);
+	bool realtime = true;
 
 	if (argc > 1) {
 		strcpy(file_record, argv[1]);
-
-		cfg.enable_stream(RS2_STREAM_DEPTH, 640, 480, RS2_FORMAT_Z16, 15);
-		cfg.enable_stream(RS2_STREAM_INFRARED, 640, 480, RS2_FORMAT_Y8, 15);
-		cfg.enable_stream(RS2_STREAM_COLOR, 1280, 720, RS2_FORMAT_RGB8, 15);
 
 		cfg.enable_device_from_file(file_record);
 
@@ -362,6 +362,7 @@ int main(int argc, char * argv[]) try {
 		app_state::get().set_current_file(file_record);
 		app_state::get().invalidate_playback = false;
 		read_file = true;
+		realtime = false;
 
 	} else {
 		//std::string fname = igl::file_dialog_open();
@@ -369,7 +370,8 @@ int main(int argc, char * argv[]) try {
 		std::cout << "Not enough parameters." << std::endl << std::endl;
 		std::cout << "Use example: " << std::endl;
 		std::cout << "  er-vision ~/data/8799ecf/180904_135414/capture.bag" << std::endl;
-		return -1;
+
+		cfg.enable_record_to_file("test.bag");
 	}
 
 	Eigen::initParallel();
@@ -404,17 +406,13 @@ int main(int argc, char * argv[]) try {
 
 	rs2::frameset frames;
 
-	rs2::playback playback = device.as<rs2::playback>();
-
 	int current_frame = 0;
 	unsigned int i = 0;
 
-	device.as<rs2::playback>().set_real_time(false);
 	std::vector<pcl_ptr> layers;
 
 	er_pointcloud pc;
-
-	pointcloud pc2;
+	er_pointcloud pc2;
 
 	er::pipeline er_pipe = er::pipeline::get();
 
@@ -428,13 +426,30 @@ int main(int argc, char * argv[]) try {
 		app_state::get().should_close_app = glfwWindowShouldClose(app);
 
 		// Wait for the next set of frames from the camera
-		rs2::playback playback = device.as<rs2::playback>();
+		if (device.as<rs2::recorder>()) {
 
-		uint64_t position = playback.get_position() / 1000000;
-		app_state::get().playback_position = position;
-		std::chrono::milliseconds duration = std::chrono::milliseconds(playback.get_duration().count());
+		} else {
+			rs2::playback playback = device.as<rs2::playback>();
+			device.as<rs2::playback>().set_real_time(false);
 
-		app_state::get().playback_duration = duration.count();
+			uint64_t position = playback.get_position() / 1000000;
+			app_state::get().playback_position = position;
+			std::chrono::milliseconds duration = std::chrono::milliseconds(playback.get_duration().count());
+
+			app_state::get().playback_duration = duration.count();
+
+			if (playing_state != app_state::get().playing) {
+				playback.resume();
+				playing_state = !playing_state;
+				if (playing_state) {
+					printf_h2("Playing");
+					playback.resume();
+				} else {
+					printf_h2("Pause");
+					playback.pause();
+				}
+			}
+		}
 
 		if (app_state::get().invalidate_playback) {
 			std::cout << "Invalidate playback " << std::endl;
@@ -449,23 +464,11 @@ int main(int argc, char * argv[]) try {
 			app_state::get().invalidate_playback = false;
 		}
 
-		if (playing_state != app_state::get().playing) {
-			playback.resume();
-			playing_state = !playing_state;
-			if (playing_state) {
-				printf_h2("Playing");
-				playback.resume();
-			} else {
-				printf_h2("Pause");
-				playback.pause();
-			}
-		}
-
 		pcl_ptr cloud_raw(new pcl::PointCloud<pcl::PointXYZRGBA>);
 		pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
 		pcl_ptr cloud_pipe(new pcl::PointCloud<pcl::PointXYZRGBA>);
 
-		if (playback && pipe->poll_for_frames(&frames)) {
+		if (pipe->poll_for_frames(&frames)) {
 			layers.clear();
 
 			auto depth = frames.get_depth_frame();
