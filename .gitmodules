@@ -7,3 +7,6 @@
 [submodule "libs/libigl"]
 	path = libs/libigl
 	url = git@github.com:sergioamr/libigl.git
+[submodule "libs/librealsense"]
+	path = libs/librealsense
+	url = git@github.com:earthrover/librealsense.git
