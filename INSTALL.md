@@ -135,6 +135,22 @@ If you have ROS installed you can skip this part:
 Install Build essentials
 ------------------------
 
+Prerequisites
+
+## Install CMAKE 3.8+
+
+Example on 3.13
+```
+mkdir cmake_download & cd cmake_download
+wget https://github.com/Kitware/CMake/releases/download/v3.13.1/cmake-3.13.1.tar.gz
+tar xvf cmake-3.13.1.tar.gz
+cd cmake-3.13.1/
+./configure
+sudo make install
+sudo hash -r
+```
+
+## Install ROS Essentials
 ```
 sudo apt-get install -y python-rosdep python-rosinstall-generator python-wstool python-rosinstall build-essential cmake
 sudo rosdep init
@@ -181,6 +197,35 @@ cmake ../ -DCMAKE_BUILD_TYPE=Release
 If everything went well:
 ```
 sudo make uninstall && make clean && make && sudo make install
+```
+
+## Vision Pipeline
+Now lets try to compile er_vision_pipeline
+
+```
+cd ~/er_vision_pipeline/
+mkdir build & cd build
+cmake ..
+make
+```
+
+## How to run it
+
+To run the project, the application will accept two types of input.
+1. A bag file containing captured data by er_camera_capture
+2. A realsense live input
+
+If you downloaded our data set, you should have a folder like
+
+```
+~/data/8799ecf
+```
+
+8799ecf is the reference of the commit from er_camera_capture
+
+Example of a good data sample:
+```
+er-vision ~/data/8799ecf/180904_135414/capture.bag
 ```
 
 This installation will not give support to the IMU and some modes
