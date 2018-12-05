@@ -67,6 +67,8 @@ namespace er {
 	{
 	public:
 		pcl_ptr cloud_filtered;
+		pcl_ptr cloud_voxel;
+
 		frame_data frame_seg[MAX_PLANTS];
 
 		// Texture to display
