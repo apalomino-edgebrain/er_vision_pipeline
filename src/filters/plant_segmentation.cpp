@@ -104,6 +104,7 @@ plants_segmentation_filter::~plants_segmentation_filter()
 
 bool plants_segmentation_filter::process()
 {
+	printf(" plants_segmentation_filter::process() \n");
 	cloud_out->clear();
 	cloud_filtered->clear();
 
@@ -382,14 +383,14 @@ void plants_segmentation_filter::render_ui()
 
 	if (app_state::get().show_voxel_view) {
 		ImGui::Begin("Voxel View", &app_state::get().show_voxel_view, flags);
+		ImGui::SliderFloat("Point Scale", &app_state::get().scale_voxel_grid, 0.001f, 0.005f);
+		ImGui::Separator();
 
 		ImGui::Checkbox("Show Euclidian cluster", &app_state::get().show_euclidian_cluster);
 		ImGui::SliderFloat("Cluster Tolerance in m", &app_state::get().cluster_tolerance, 0.01f, 1.0f);
 		ImGui::SliderInt("Min cluster points", &app_state::get().min_cluster_points, 100, 25000);
 		ImGui::SliderInt("Max cluster points", &app_state::get().max_cluster_points, 100, 25001);
 		ImGui::Separator();
-
-		ImGui::SliderFloat("Point Scale", &app_state::get().scale_voxel_grid, 0.001f, 0.005f);
 
 		ImGui::Checkbox("Show Kmeans clusters", &app_state::get().show_kmeans_cluster);
 		ImGui::SliderInt("Cluster size", &app_state::get().cluster_size, 1, 64);
