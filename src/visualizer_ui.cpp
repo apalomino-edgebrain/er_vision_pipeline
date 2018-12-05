@@ -194,6 +194,15 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 			ImGui::Begin("Raw RGBD View", &app_state::get().show_raw_rgbd, flags);
 
 			ImGui::Text("Color Spaces");
+
+			if (ImGui::Checkbox("Show ground Raw", &app_state::get().show_ground_raw)) {
+				printf(" Show ground Raw\n"); app_state::get().invalidate_ui = true;
+			}
+
+			if (ImGui::Checkbox("Show plants Raw", &app_state::get().show_plants_raw)) {
+				printf(" Show plants Raw\n"); app_state::get().invalidate_ui = true;
+			}
+
 			ImGui::Checkbox("Show nvdi", &app_state::get().bool_tint_nvdi);
 			ImGui::SliderFloat("NVDI", &app_state::get().cur_nvdi,
 				app_state::get().min_nvdi,

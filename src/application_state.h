@@ -78,6 +78,9 @@ namespace er {
 
 		bool invalidate_ui = false;
 
+		bool show_plants_raw = false;
+		bool show_ground_raw = false;
+
 		bool show_ground = false;
 		bool show_plants = true;
 		bool show_ir_only_data = true;

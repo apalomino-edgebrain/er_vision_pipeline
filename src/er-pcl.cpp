@@ -517,9 +517,9 @@ int main(int argc, char * argv[]) try {
 
 						float nvdi = float(p.a - p.r) / (p.a + p.r);
 
-						if (app_state::get().show_ground && app_state::get().show_plants) {
+						if (app_state::get().show_ground_raw && app_state::get().show_plants_raw) {
 						} else {
-							if (app_state::get().show_ground) {
+							if (app_state::get().show_ground_raw) {
 								if (nvdi > app_state::get().cur_nvdi) {
 									p.r = p.g = p.b = 0;
 									p.z = 0;
@@ -532,7 +532,7 @@ int main(int argc, char * argv[]) try {
 								}
 							}
 
-							if (app_state::get().show_plants) {
+							if (app_state::get().show_plants_raw) {
 								if (nvdi < app_state::get().cur_nvdi) {
 									if (app_state::get().bool_tint_nvdi) {
 										p.g = p.b = 0;

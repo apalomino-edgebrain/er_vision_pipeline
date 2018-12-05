@@ -53,6 +53,7 @@ using namespace er;
 
 bool plants_filter::process()
 {
+	printf(" plants_filter::process() \n");
 	cloud_out->clear();
 
 	Eigen::Transform<double, 3, Eigen::Affine> ground_transform;
@@ -114,10 +115,10 @@ bool plants_filter::process()
 
 			view.point_scale = 0.00f;
 		}
-
-		if (f_callback_output != nullptr)
-			f_callback_output(cloud_out);
 	};
+
+	if (f_callback_output != nullptr)
+		f_callback_output(cloud_out);
 
 	return true;
 }
