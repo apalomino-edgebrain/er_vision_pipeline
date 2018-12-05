@@ -129,25 +129,23 @@ bool plants_separation_filter::process()
 		cloud_out->height = 1;
 		cloud_out->is_dense = true;
 	} else
-	if (app_state::get().use_voxel_grid) {
-		pcl::VoxelGrid<pcl::PointXYZRGBA> sor;
-		sor.setInputCloud(cloud_in);
-		sor.setLeafSize(app_state::get().leaf_X,
-			app_state::get().leaf_Y, app_state::get().leaf_Z);
-		sor.filter(*cloud_out);
+		if (app_state::get().use_voxel_grid) {
+			pcl::VoxelGrid<pcl::PointXYZRGBA> sor;
+			sor.setInputCloud(cloud_in);
+			sor.setLeafSize(app_state::get().leaf_X,
+				app_state::get().leaf_Y, app_state::get().leaf_Z);
+			sor.filter(*cloud_out);
 
-		if (cloud_out->points.size() == 0)
+			if (cloud_out->points.size() == 0)
+				return true;
+
+			std::cout << "points in total Cloud : " << cloud_out->points.size() << std::endl;
+			// get the cluster centroids
+		} else {
 			return true;
+		}
 
-		std::cout << "points in total Cloud : " << cloud_out->points.size() << std::endl;
-		// get the cluster centroids
-	} else {
-		return true;
-	}
-
-
-	if (view != nullptr)
-		view->f_external_render = [&] (void *viewer_ptr) {
+	view.f_external_render = [&] (void *viewer_ptr) {
 #ifdef USE_PCL_1_8_0
 		if (!app_state::get().show_kmeans_cluster)
 			return;
@@ -178,10 +176,10 @@ bool plants_separation_filter::process()
 			pos << centroids[i][0], centroids[i][1], centroids[i][2];
 
 			sprintf(text, "(%2.2f, %2.2f, %2.2f)", pos.x(), pos.y(), pos.z());
-			view->render_point(viewer_ptr, pos,
+			view.render_point(viewer_ptr, pos,
 				Eigen::Vector3d { 0, 0, 1 }, text);
 
-			view->point_scale = 0.05f;
+			view.point_scale = 0.05f;
 
 			plant_definition p;
 			p.view_x = pos.x();
@@ -194,13 +192,13 @@ bool plants_separation_filter::process()
 		Eigen::RowVector3d min_;
 		min_ << min_pt.x, min_pt.y, min_pt.z;
 		sprintf(text, "MIN (%2.2f, %2.2f, %2.2f)", min_.x(), min_.y(), min_.z());
-		view->render_point(viewer_ptr, min_,
+		view.render_point(viewer_ptr, min_,
 			Eigen::Vector3d { 1, 0, 1 }, text);
 
 		Eigen::RowVector3d max_;
 		max_ << max_pt.x, max_pt.y, max_pt.z;
 		sprintf(text, "MAX (%2.2f, %2.2f, %2.2f)", max_.x(), max_.y(), max_.z());
-		view->render_point(viewer_ptr, max_,
+		view.render_point(viewer_ptr, max_,
 			Eigen::Vector3d { 1, 0, 1 }, text);
 #endif
 	};
@@ -210,11 +208,9 @@ bool plants_separation_filter::process()
 
 void plants_separation_filter::invalidate_view()
 {
-	if (view != nullptr)
-		view->point_scale = er::app_state::get().scale_voxel_grid;
+	view.point_scale = er::app_state::get().scale_voxel_grid;
 	er::process_unit::invalidate_view();
 }
-
 
 #define BED_SIZE 3
 
@@ -222,7 +218,6 @@ void plants_separation_filter::render_ui()
 {
 #ifdef USE_IMGUI
 	static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
-
 	if (app_state::get().show_voxel_view) {
 		ImGui::Begin("Voxel View", &app_state::get().show_voxel_view, flags);
 

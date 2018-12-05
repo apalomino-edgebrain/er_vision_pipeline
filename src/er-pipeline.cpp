@@ -85,7 +85,7 @@ er::pipeline::pipeline()
 
 	process_units["ground"] = ground;
 	process_units["plant_segmentation"] = plants;
-	process_units["plants_separation"] = plants_extract;
+	//process_units["plants_separation"] = plants_extract;
 	process_units["plants_seg"] = plants_seg;
 }
 
@@ -167,10 +167,10 @@ void er::process_unit::invalidate_view()
 	if (!visible)
 		return;
 
-	if (cloud_out == nullptr || view == nullptr)
+	if (cloud_out == nullptr || view.visible == false)
 		return;
 
-	view->invalidate_cloud(cloud_out);
+	view.invalidate_cloud(cloud_out);
 }
 
 bool er::process_unit::process()
@@ -208,20 +208,22 @@ void er::pipeline::process_frame(pcl_ptr cloud, std::vector<frame_data *> &data_
 	process_unit *pu = process_units["ground"];
 	pu->input_pcl(cloud);
 
-	// Initialize the display frame buffers
+	// Prepare the list of views to render, only visible views will get into the
+	// rendering pipeline
 
-	// TODO: (this is not thread safe).
-	// Maybe lock on the worker thread?
+	bool subscribe = false;
+	if (data_views.size() == 0) {
+		subscribe = true;
+	}
+
 	for (auto const &x : process_units) {
 		process_unit *pu = x.second;
-		if (pu->view == nullptr) {
-			pu->view = new er::frame_data();
-			data_views.push_back(pu->view);
-		}
 
 		// Here we do the render pre-process
 		if (pu->visible) {
 			pu->invalidate_view();
+			if (subscribe)
+				data_views.push_back(&pu->view);
 		}
 	}
 }
@@ -233,8 +235,6 @@ void er::pipeline::render_ui()
 {
 	for (auto const &x : process_units) {
 		process_unit *pu = x.second;
-		if (pu->view != nullptr) {
-			pu->render_ui();
-		}
+		pu->render_ui();
 	}
 }

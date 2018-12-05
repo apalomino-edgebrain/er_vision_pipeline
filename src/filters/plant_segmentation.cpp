@@ -68,7 +68,7 @@ plant_definition::plant_definition()
 
 //------ Plant discovery & segmentation ------
 
-plants_segmentation_filter::plants_segmentation_filter(): tex_id (0)
+plants_segmentation_filter::plants_segmentation_filter() : tex_id(0)
 {
 	size_w = app_state::get().floor_project_x;
 	size_h = app_state::get().floor_project_y;
@@ -90,6 +90,11 @@ plants_segmentation_filter::plants_segmentation_filter(): tex_id (0)
 	tex_floor_rgba = new uint32_t[len];
 
 	memset(tex_floor_rgba, 0x11, sizeof(uint32_t) * len);
+
+	pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
+
+	// This is our cloud filtering to be reused after processing
+	cloud_filtered = cloud;
 }
 
 plants_segmentation_filter::~plants_segmentation_filter()
@@ -100,6 +105,7 @@ plants_segmentation_filter::~plants_segmentation_filter()
 bool plants_segmentation_filter::process()
 {
 	cloud_out->clear();
+	cloud_filtered->clear();
 
 	/*
 	template <typename PointT> void
@@ -122,21 +128,21 @@ bool plants_segmentation_filter::process()
 		cloud_out->height = 1;
 		cloud_out->is_dense = true;
 	} else
-	if (app_state::get().use_voxel_grid) {
-		pcl::VoxelGrid<pcl::PointXYZRGBA> sor;
-		sor.setInputCloud(cloud_in);
-		sor.setLeafSize(app_state::get().leaf_X,
-			app_state::get().leaf_Y, app_state::get().leaf_Z);
-		sor.filter(*cloud_out);
+		if (app_state::get().use_voxel_grid) {
+			pcl::VoxelGrid<pcl::PointXYZRGBA> sor;
+			sor.setInputCloud(cloud_in);
+			sor.setLeafSize(app_state::get().leaf_X,
+				app_state::get().leaf_Y, app_state::get().leaf_Z);
+			sor.filter(*cloud_out);
 
-		if (cloud_out->points.size() == 0)
+			if (cloud_out->points.size() == 0)
+				return true;
+
+			std::cout << "points in total Cloud : " << cloud_out->points.size() << std::endl;
+			// get the cluster centroids
+		} else {
 			return true;
-
-		std::cout << "points in total Cloud : " << cloud_out->points.size() << std::endl;
-		// get the cluster centroids
-	} else {
-		return true;
-	}
+		}
 
 	if (app_state::get().use_erosion) {
 		pcl::applyMorphologicalOperator<pcl::PointXYZRGBA>(cloud_in,
@@ -175,8 +181,84 @@ bool plants_segmentation_filter::process()
 		pos += size_w;
 	}
 
-	if (view != nullptr)
-		view->f_external_render = [&] (void *viewer_ptr) {
+	view.f_external_render = [&] (void *viewer_ptr) {
+		if (app_state::get().show_euclidian_cluster) {
+			// Create the segmentation object for the planar model and set all the parameters
+			pcl::SACSegmentation<pcl::PointXYZRGBA> seg;
+			pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+			pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+			pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZRGBA>());
+			pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud_f(new pcl::PointCloud<pcl::PointXYZRGBA>);
+
+			seg.setOptimizeCoefficients(true);
+			seg.setModelType(pcl::SACMODEL_PLANE);
+			seg.setMethodType(pcl::SAC_RANSAC);
+			seg.setMaxIterations(100);
+			seg.setDistanceThreshold(0.02);
+
+			pcl::copyPointCloud(*cloud_out, *cloud_filtered);
+
+			int i = 0, nr_points = (int) cloud_filtered->points.size();
+			while (cloud_filtered->points.size() > 0.3 * nr_points) {
+				// Segment the largest planar component from the remaining cloud
+				seg.setInputCloud(cloud_filtered);
+				seg.segment(*inliers, *coefficients);
+				if (inliers->indices.size() == 0) {
+					std::cout << "Could not estimate a planar model for the given dataset." << std::endl;
+					break;
+				}
+
+				// Extract the planar inliers from the input cloud
+				pcl::ExtractIndices<pcl::PointXYZRGBA> extract;
+				extract.setInputCloud(cloud_filtered);
+				extract.setIndices(inliers);
+				extract.setNegative(false);
+
+				// Get the points associated with the planar surface
+				extract.filter(*cloud_plane);
+				std::cout << "PointCloud representing the planar component: " << cloud_plane->points.size() << " data points." << std::endl;
+
+				// Remove the planar inliers, extract the rest
+				extract.setNegative(true);
+				extract.filter(*cloud_f);
+
+				cloud_filtered = cloud_f;
+			}
+
+			pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>);
+			tree->setInputCloud(cloud_filtered);
+
+			std::vector<pcl::PointIndices> cluster_indices;
+			pcl::EuclideanClusterExtraction<pcl::PointXYZRGBA> ec;
+			ec.setClusterTolerance(app_state::get().cluster_tolerance);
+
+			ec.setMinClusterSize(app_state::get().min_cluster_points);
+			ec.setMaxClusterSize(app_state::get().max_cluster_points);
+			ec.setSearchMethod(tree);
+			ec.setInputCloud(cloud_filtered);
+			ec.extract(cluster_indices);
+
+			int j = 0;
+			for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it) {
+				pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZRGBA>);
+				for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
+					cloud_cluster->points.push_back(cloud_filtered->points[*pit]);
+
+				cloud_cluster->width = cloud_cluster->points.size();
+				cloud_cluster->height = 1;
+				cloud_cluster->is_dense = true;
+				printf(" Found cluster %d \n", cloud_cluster->width);
+
+				if (j < MAX_PLANTS) {
+					frame_seg[j].invalidate_cloud(cloud_cluster);
+				}
+
+				j++;
+
+			}
+			return;
+		}
+
 #ifdef USE_PCL_1_8_0
 		if (!app_state::get().show_kmeans_cluster)
 			return;
@@ -207,10 +289,10 @@ bool plants_segmentation_filter::process()
 			pos << centroids[i][0], centroids[i][1], centroids[i][2];
 
 			sprintf(text, "(%2.2f, %2.2f, %2.2f)", pos.x(), pos.y(), pos.z());
-			view->render_point(viewer_ptr, pos,
+			view.render_point(viewer_ptr, pos,
 				Eigen::Vector3d { 0, 0, 1 }, text);
 
-			view->point_scale = 0.05f;
+			view.point_scale = 0.05f;
 
 			plant_definition p;
 			p.view_x = pos.x();
@@ -223,13 +305,13 @@ bool plants_segmentation_filter::process()
 		Eigen::RowVector3d min_;
 		min_ << min_pt.x, min_pt.y, min_pt.z;
 		sprintf(text, "MIN (%2.2f, %2.2f, %2.2f)", min_.x(), min_.y(), min_.z());
-		view->render_point(viewer_ptr, min_,
+		view.render_point(viewer_ptr, min_,
 			Eigen::Vector3d { 1, 0, 1 }, text);
 
 		Eigen::RowVector3d max_;
 		max_ << max_pt.x, max_pt.y, max_pt.z;
 		sprintf(text, "MAX (%2.2f, %2.2f, %2.2f)", max_.x(), max_.y(), max_.z());
-		view->render_point(viewer_ptr, max_,
+		view.render_point(viewer_ptr, max_,
 			Eigen::Vector3d { 1, 0, 1 }, text);
 #endif
 	};
@@ -239,11 +321,9 @@ bool plants_segmentation_filter::process()
 
 void plants_segmentation_filter::invalidate_view()
 {
-	if (view != nullptr)
-		view->point_scale = er::app_state::get().scale_voxel_grid;
+	view.point_scale = er::app_state::get().scale_voxel_grid;
 	er::process_unit::invalidate_view();
 }
-
 
 #define BED_SIZE 3
 
@@ -251,7 +331,7 @@ void plants_segmentation_filter::render_ui()
 {
 #ifdef USE_IMGUI
 	static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
-/*
+
 	if (app_state::get().show_image_view) {
 
 		if (tex_id == 0) {
@@ -277,7 +357,7 @@ void plants_segmentation_filter::render_ui()
 		ImGui::Begin("2D View", &app_state::get().show_image_view, flags);
 		ImGui::TextWrapped("Show 2.5d image");
 
-		ImGui::Image((ImTextureID) tex_id, ImVec2(size_w/2, size_h/2));
+		ImGui::Image((ImTextureID) tex_id, ImVec2(size_w / 2, size_h / 2));
 
 		if (ImGui::IsItemHovered()) {
 			ImGui::BeginTooltip();
@@ -299,13 +379,19 @@ void plants_segmentation_filter::render_ui()
 		}
 		ImGui::End();
 	}
-*/
+
 	if (app_state::get().show_voxel_view) {
 		ImGui::Begin("Voxel View", &app_state::get().show_voxel_view, flags);
 
+		ImGui::Checkbox("Show Euclidian cluster", &app_state::get().show_euclidian_cluster);
+		ImGui::SliderFloat("Cluster Tolerance in m", &app_state::get().cluster_tolerance, 0.01f, 1.0f);
+		ImGui::SliderInt("Min cluster points", &app_state::get().min_cluster_points, 100, 25000);
+		ImGui::SliderInt("Max cluster points", &app_state::get().max_cluster_points, 100, 25001);
+		ImGui::Separator();
+
 		ImGui::SliderFloat("Point Scale", &app_state::get().scale_voxel_grid, 0.001f, 0.005f);
 
-		ImGui::Checkbox("Show cluster centres", &app_state::get().show_kmeans_cluster);
+		ImGui::Checkbox("Show Kmeans clusters", &app_state::get().show_kmeans_cluster);
 		ImGui::SliderInt("Cluster size", &app_state::get().cluster_size, 1, 64);
 
 		if (ImGui::Checkbox("Use Erosion", &app_state::get().use_erosion)) {
@@ -316,6 +402,7 @@ void plants_segmentation_filter::render_ui()
 		ImGui::Text("Erosion Value");
 		ImGui::SliderFloat("Erosion", &app_state::get().erosion_resolution, 0.01f, 1);
 
+		ImGui::Separator();
 		if (ImGui::Checkbox("Octree Voxel", &app_state::get().use_octreepoint_voxel)) {
 			app_state::get().use_octreepoint_voxel = true;
 			app_state::get().use_voxel_grid = false;
