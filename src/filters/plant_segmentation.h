@@ -56,17 +56,23 @@
 // Fast and dirty implementation for a 2.5d image analisis
 // to find the different plants.
 
-#define FLOOR_SIZE_W 64
-#define FLOOR_SIZE_H 64
+#define FLOOR_SIZE_W 128
+#define FLOOR_SIZE_H 128
+
+// We can only see 32 plants at the same time.
+#define MAX_PLANTS 32
 
 namespace er {
 	class plants_segmentation_filter: public process_unit
 	{
 	public:
+		pcl_ptr cloud_filtered;
+		frame_data frame_seg[MAX_PLANTS];
+
 		// Texture to display
 		uint32_t size_w;
 		uint32_t size_h;
-		unsigned int tex_id;
+		uint32_t tex_id;
 
 		uint32_t *tex_floor_rgba;
 		float *floor_projection;

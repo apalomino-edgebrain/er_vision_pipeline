@@ -380,7 +380,7 @@ void er::worker_t::start()
 	// Just a basic testing Grid
 	//
 
-/*
+#ifdef WIN32
 	{
 		Eigen::MatrixXd V, C;
 		Eigen::MatrixXi F;
@@ -397,10 +397,13 @@ void er::worker_t::start()
 		//viewer.data().set_colors(C);
 		viewer.append_mesh();
 	}
-*/
+#endif
+
 	// Loads a plane grid for testing purposes
+/*
 #ifdef WIN32
 	{
+
 		Eigen::MatrixXd V, C;
 		Eigen::MatrixXi F;
 
@@ -413,8 +416,10 @@ void er::worker_t::start()
 		igl::jet(Z, true, C);
 
 		viewer.data().set_points(V, C, radius);
+
 	}
 #endif
+*/
 	//------------------------------------------------------------
 
 	initialize_visualizer_ui(viewer);

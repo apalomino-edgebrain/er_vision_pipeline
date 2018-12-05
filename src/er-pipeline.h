@@ -168,6 +168,8 @@ namespace er {
 	class frame_data
 	{
 	public:
+		std::vector<frame_data *> sub_views;
+
 		// Do we render this view on the screen?
 		volatile bool visible;
 
@@ -245,7 +247,7 @@ namespace er {
 		// Do we show this unit on the display?
 		bool visible = true;
 
-		frame_data *view = nullptr;
+		frame_data view;
 
 		pcl_ptr cloud_in;
 		pcl_ptr cloud_out;

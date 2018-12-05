@@ -124,7 +124,13 @@ namespace er {
 
 		float scale_voxel_grid = 0.01f;
 
-		// Cluster algorithms
+		// Euclidian Cluster algorithms
+		bool show_euclidian_cluster = true;
+		int min_cluster_points = 100;
+		int max_cluster_points = 25000;
+		float cluster_tolerance = 0.02; // 2cm
+
+		// Kmeans cluestering
 		bool show_kmeans_cluster = true;
 		int cluster_size = 16;
 

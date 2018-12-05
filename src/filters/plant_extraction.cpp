@@ -97,8 +97,8 @@ bool plants_filter::process()
 					cloud_out->points.push_back(p);
 	}
 
-	if (view != nullptr)
-		view->f_external_render = [&] (void *viewer_ptr) {
+
+	view.f_external_render = [&] (void *viewer_ptr) {
 		char text[512];
 
 		Eigen::RowVector3d pos;
@@ -109,15 +109,15 @@ bool plants_filter::process()
 			sprintf(text, "%2.2fcm", t);
 			Eigen::Vector3d color = { 1, 1, 1 };
 
-			view->render_point(viewer_ptr, pos,
+			view.render_point(viewer_ptr, pos,
 				color, text);
 
-			view->point_scale = 0.00f;
+			view.point_scale = 0.00f;
 		}
-	};
 
-	if (f_callback_output != nullptr)
-		f_callback_output(cloud_out);
+		if (f_callback_output != nullptr)
+			f_callback_output(cloud_out);
+	};
 
 	return true;
 }
@@ -130,10 +130,10 @@ void plants_filter::set_ground_filter(ground_filter *grnd_filter_)
 void plants_filter::invalidate_view()
 {
 	if (app_state::get().show_plants) {
-		view->visible = true;
+		view.visible = true;
 		er::process_unit::invalidate_view();
 	} else {
-		view->visible = false;
+		view.visible = false;
 	}
 }
 
