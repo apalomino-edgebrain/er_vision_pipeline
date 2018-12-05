@@ -417,8 +417,8 @@ void plants_segmentation_filter::render_ui()
 
 		ImGui::Checkbox("Show Euclidian cluster", &app_state::get().show_euclidian_cluster);
 		ImGui::SliderFloat("Cluster Tolerance in m", &app_state::get().cluster_tolerance, 0.01f, 1.0f);
-		ImGui::SliderInt("Min cluster points", &app_state::get().min_cluster_points, 10, 2000);
-		ImGui::SliderInt("Max cluster points", &app_state::get().max_cluster_points, 10, 2001);
+		ImGui::SliderInt("Min cluster points", &app_state::get().min_cluster_points, 25, 10000);
+		ImGui::SliderInt("Max cluster points", &app_state::get().max_cluster_points, 25, 10000);
 		ImGui::Separator();
 
 		ImGui::Checkbox("Show Kmeans clusters", &app_state::get().show_kmeans_cluster);
