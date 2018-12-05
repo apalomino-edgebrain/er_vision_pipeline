@@ -50,6 +50,25 @@
 #include <GLFW/glfw3.h>
 #endif
 
+#define MAX_COLORS 15
+float colors[3 * MAX_COLORS] = {
+	255,255,255,  // WHITE
+	255, 0, 0, // RED
+	0, 255, 0, // Lime
+	0, 0, 255, // Blue
+	255, 255, 0, // Yellow
+	0, 255, 255, // Cyan
+	255, 0, 255, // Magenta
+	192, 192, 192, // Silver
+	128, 128, 128, // Gray
+	128, 0, 0, // Maroon
+	128, 128, 0, // Olive
+	0, 128, 0, // Green
+	128, 0, 128, // Purple
+	0, 128, 128, // Teal
+	0, 0, 128 // Navy
+};
+
 using namespace pcl;
 
 #include "../er-pipeline.h"
@@ -91,10 +110,13 @@ plants_segmentation_filter::plants_segmentation_filter() : tex_id(0)
 
 	memset(tex_floor_rgba, 0x11, sizeof(uint32_t) * len);
 
-	pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
-
 	// This is our cloud filtering to be reused after processing
+	pcl_ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
 	cloud_filtered = cloud;
+
+	// Temporal cloud to store our voxel data
+	pcl_ptr cloud_temp(new pcl::PointCloud<pcl::PointXYZRGBA>);
+	cloud_voxel = cloud_temp;
 }
 
 plants_segmentation_filter::~plants_segmentation_filter()
@@ -106,6 +128,7 @@ bool plants_segmentation_filter::process()
 {
 	printf(" plants_segmentation_filter::process() \n");
 	cloud_out->clear();
+	cloud_voxel->clear();
 	cloud_filtered->clear();
 
 	/*
@@ -124,24 +147,25 @@ bool plants_segmentation_filter::process()
 		pcl::octree::OctreePointCloud<pcl::PointXYZRGBA>::AlignedPointTVector centroids;
 		octree.getVoxelCentroids(centroids);
 
-		cloud_out->points.assign(centroids.begin(), centroids.end());
-		cloud_out->width = uint32_t(centroids.size());
-		cloud_out->height = 1;
-		cloud_out->is_dense = true;
+		cloud_voxel->points.assign(centroids.begin(), centroids.end());
+		cloud_voxel->width = uint32_t(centroids.size());
+		cloud_voxel->height = 1;
+		cloud_voxel->is_dense = true;
 	} else
 		if (app_state::get().use_voxel_grid) {
 			pcl::VoxelGrid<pcl::PointXYZRGBA> sor;
 			sor.setInputCloud(cloud_in);
 			sor.setLeafSize(app_state::get().leaf_X,
 				app_state::get().leaf_Y, app_state::get().leaf_Z);
-			sor.filter(*cloud_out);
+			sor.filter(*cloud_voxel);
 
-			if (cloud_out->points.size() == 0)
+			if (cloud_voxel->points.size() == 0)
 				return true;
 
-			std::cout << "points in total Cloud : " << cloud_out->points.size() << std::endl;
+			std::cout << "points in total Cloud : " << cloud_voxel->points.size() << std::endl;
 			// get the cluster centroids
 		} else {
+			printf(" No cloud to process!");
 			return true;
 		}
 
@@ -182,82 +206,85 @@ bool plants_segmentation_filter::process()
 		pos += size_w;
 	}
 
+	if (app_state::get().show_euclidian_cluster) {
+		pcl::copyPointCloud(*cloud_voxel, *cloud_filtered);
+
+		pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>);
+		tree->setInputCloud(cloud_filtered);
+
+		std::vector<pcl::PointIndices> cluster_indices;
+		pcl::EuclideanClusterExtraction<pcl::PointXYZRGBA> ec;
+		ec.setClusterTolerance(app_state::get().cluster_tolerance);
+
+		ec.setMinClusterSize(app_state::get().min_cluster_points);
+		ec.setMaxClusterSize(app_state::get().max_cluster_points);
+		ec.setSearchMethod(tree);
+		ec.setInputCloud(cloud_filtered);
+		ec.extract(cluster_indices);
+
+		plants_mutex.lock();
+		plants.clear();
+
+		int j = 0;
+		for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it) {
+			pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZRGBA>);
+			for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
+				cloud_cluster->points.push_back(cloud_filtered->points[*pit]);
+
+			cloud_cluster->width = cloud_cluster->points.size();
+			cloud_cluster->height = 1;
+			cloud_cluster->is_dense = true;
+			printf("%d: Found cluster %d \n", j, cloud_cluster->width);
+
+			if (j < MAX_PLANTS) {
+				// TODO: Replace this function with computeNDCentroid
+				CentroidPoint<pcl::PointXYZRGBA> centroid;
+				for (int t = 0; t < cloud_cluster->width; t++) {
+					centroid.add(cloud_cluster->points[t]);
+
+					// Get a color from our fancy color table
+					int c = (j % MAX_COLORS) * 3;
+					cloud_cluster->points[t].r = colors[c + 0];
+					cloud_cluster->points[t].g = colors[c + 1];
+					cloud_cluster->points[t].b = colors[c + 2];
+				}
+
+				pcl::PointXYZRGBA c1;
+				centroid.get(c1);
+
+				view.point_scale = 0.05f;
+				plant_definition p;
+				p.view_x = - c1.x;
+				p.view_y = 0.7 - c1.z / 2;
+				p.view_radius = 0;
+				plants.push_back(p);
+
+				frame_seg[j].invalidate_cloud(cloud_cluster);
+				frame_seg[j].visible = true;
+			}
+
+			j++;
+		}
+
+		plants_mutex.unlock();
+
+		while (j < MAX_PLANTS) {
+			frame_seg[j++].visible = false;
+		}
+	}
+
 	view.f_external_render = [&] (void *viewer_ptr) {
 		if (app_state::get().show_euclidian_cluster) {
-			// Create the segmentation object for the planar model and set all the parameters
-			pcl::SACSegmentation<pcl::PointXYZRGBA> seg;
-			pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-			pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-			pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZRGBA>());
-			pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud_f(new pcl::PointCloud<pcl::PointXYZRGBA>);
-
-			seg.setOptimizeCoefficients(true);
-			seg.setModelType(pcl::SACMODEL_PLANE);
-			seg.setMethodType(pcl::SAC_RANSAC);
-			seg.setMaxIterations(100);
-			seg.setDistanceThreshold(0.02);
-
-			pcl::copyPointCloud(*cloud_out, *cloud_filtered);
-
-			int i = 0, nr_points = (int) cloud_filtered->points.size();
-			while (cloud_filtered->points.size() > 0.3 * nr_points) {
-				// Segment the largest planar component from the remaining cloud
-				seg.setInputCloud(cloud_filtered);
-				seg.segment(*inliers, *coefficients);
-				if (inliers->indices.size() == 0) {
-					std::cout << "Could not estimate a planar model for the given dataset." << std::endl;
-					break;
-				}
-
-				// Extract the planar inliers from the input cloud
-				pcl::ExtractIndices<pcl::PointXYZRGBA> extract;
-				extract.setInputCloud(cloud_filtered);
-				extract.setIndices(inliers);
-				extract.setNegative(false);
-
-				// Get the points associated with the planar surface
-				extract.filter(*cloud_plane);
-				std::cout << "PointCloud representing the planar component: " << cloud_plane->points.size() << " data points." << std::endl;
-
-				// Remove the planar inliers, extract the rest
-				extract.setNegative(true);
-				extract.filter(*cloud_f);
-
-				cloud_filtered = cloud_f;
-			}
-
-			pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>);
-			tree->setInputCloud(cloud_filtered);
-
-			std::vector<pcl::PointIndices> cluster_indices;
-			pcl::EuclideanClusterExtraction<pcl::PointXYZRGBA> ec;
-			ec.setClusterTolerance(app_state::get().cluster_tolerance);
-
-			ec.setMinClusterSize(app_state::get().min_cluster_points);
-			ec.setMaxClusterSize(app_state::get().max_cluster_points);
-			ec.setSearchMethod(tree);
-			ec.setInputCloud(cloud_filtered);
-			ec.extract(cluster_indices);
-
-			int j = 0;
-			for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it) {
-				pcl::PointCloud<pcl::PointXYZRGBA>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZRGBA>);
-				for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); ++pit)
-					cloud_cluster->points.push_back(cloud_filtered->points[*pit]);
-
-				cloud_cluster->width = cloud_cluster->points.size();
-				cloud_cluster->height = 1;
-				cloud_cluster->is_dense = true;
-				printf(" Found cluster %d \n", cloud_cluster->width);
-
-				if (j < MAX_PLANTS) {
-					frame_seg[j].invalidate_cloud(cloud_cluster);
-				}
-
-				j++;
-
+			// Pass the views to the subrenderer
+			if (view.sub_views.size() == 0) {
+				for (size_t t = 0; t < MAX_PLANTS; t++)
+					view.sub_views.push_back(&frame_seg[t]);
 			}
 			return;
+		}
+
+		if (app_state::get().show_voxel_data) {
+			pcl::copyPointCloud(*cloud_voxel, *cloud_out);
 		}
 
 #ifdef USE_PCL_1_8_0
@@ -384,12 +411,14 @@ void plants_segmentation_filter::render_ui()
 	if (app_state::get().show_voxel_view) {
 		ImGui::Begin("Voxel View", &app_state::get().show_voxel_view, flags);
 		ImGui::SliderFloat("Point Scale", &app_state::get().scale_voxel_grid, 0.001f, 0.005f);
+
+		ImGui::Checkbox("Show Voxel data", &app_state::get().show_voxel_data);
 		ImGui::Separator();
 
 		ImGui::Checkbox("Show Euclidian cluster", &app_state::get().show_euclidian_cluster);
 		ImGui::SliderFloat("Cluster Tolerance in m", &app_state::get().cluster_tolerance, 0.01f, 1.0f);
-		ImGui::SliderInt("Min cluster points", &app_state::get().min_cluster_points, 100, 25000);
-		ImGui::SliderInt("Max cluster points", &app_state::get().max_cluster_points, 100, 25001);
+		ImGui::SliderInt("Min cluster points", &app_state::get().min_cluster_points, 10, 2000);
+		ImGui::SliderInt("Max cluster points", &app_state::get().max_cluster_points, 10, 2001);
 		ImGui::Separator();
 
 		ImGui::Checkbox("Show Kmeans clusters", &app_state::get().show_kmeans_cluster);
@@ -416,10 +445,10 @@ void plants_segmentation_filter::render_ui()
 		}
 
 		ImGui::Text("Leaf Size");
-		ImGui::SliderFloat("X#leaf", &app_state::get().leaf_X, 0.01f, 1);
+		ImGui::SliderFloat("X#leaf", &app_state::get().leaf_X, 0.001f, 0.5f);
 		if (!app_state::get().use_octreepoint_voxel) {
-			ImGui::SliderFloat("Y#leaf", &app_state::get().leaf_Y, 0.01f, 1);
-			ImGui::SliderFloat("Z#leaf", &app_state::get().leaf_Z, 0.01f, 1);
+			ImGui::SliderFloat("Y#leaf", &app_state::get().leaf_Y, 0.001f, 0.5f);
+			ImGui::SliderFloat("Z#leaf", &app_state::get().leaf_Z, 0.001f, 0.5f);
 		}
 
 		ImGui::End();

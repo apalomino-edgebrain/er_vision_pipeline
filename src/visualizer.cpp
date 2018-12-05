@@ -131,6 +131,10 @@ void er::frame_data::render(void *viewer_ptr)
 		viewer->data().add_label(bbx_M, l2.str());
 	}
 
+	for (er::frame_data *sub_view : sub_views) {
+		sub_view->render(viewer_ptr);
+	}
+
 	if (f_external_render != nullptr) {
 		f_external_render(viewer_ptr);
 	}

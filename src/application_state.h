@@ -129,9 +129,11 @@ namespace er {
 
 		// Euclidian Cluster algorithms
 		bool show_euclidian_cluster = true;
-		int min_cluster_points = 100;
-		int max_cluster_points = 25000;
+		int min_cluster_points = 90;
+		int max_cluster_points = 10000;
 		float cluster_tolerance = 0.02; // 2cm
+
+		bool show_voxel_data = false;
 
 		// Kmeans cluestering
 		bool show_kmeans_cluster = true;

@@ -107,7 +107,7 @@ bool plants_filter::process()
 		for (float t = 0.0f; t <= 0.5f; t += 0.1f) {
 			pos << 0.0f, t, 0.5f;
 
-			sprintf(text, "%2.2fcm", t);
+			sprintf(text, "%2.2fm", t);
 			Eigen::Vector3d color = { 1, 1, 1 };
 
 			view.render_point(viewer_ptr, pos,
