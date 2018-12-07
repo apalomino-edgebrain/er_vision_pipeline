@@ -51,7 +51,7 @@
 #endif
 
 #define MAX_COLORS 15
-float colors[3 * MAX_COLORS] = {
+static const float colors[3 * MAX_COLORS] = {
 	255,255,255,  // WHITE
 	255, 0, 0, // RED
 	0, 255, 0, // Lime
@@ -293,6 +293,9 @@ bool plants_segmentation_filter::process()
 		}
 
 #ifdef USE_PCL_1_8_0
+		// Kmeans clustering gives us pretty bad results.
+		// We might be able to improve the results at some point
+
 		if (!app_state::get().show_kmeans_cluster)
 			return;
 
@@ -367,6 +370,10 @@ void plants_segmentation_filter::render_ui()
 
 	if (app_state::get().show_image_view) {
 #ifdef WIN32
+       // It seems that we have an issue in Linux to use raw GL.
+       // A possible option is that we haven't initialized the GL functions
+       // which are normally wrappers and dynamically loaded.
+
 		if (tex_id == 0) {
 			glGenTextures(1, &tex_id);
 		}
