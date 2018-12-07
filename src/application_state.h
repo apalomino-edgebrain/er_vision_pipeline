@@ -27,6 +27,7 @@
 #define application_state_H_
 
 #define DEFAULT_CONFIG "vision_cfg.json"
+#define DEFAULT_DATASET_CONFIG "dataset.json"
 
 #include <Eigen/Core>
 
@@ -51,12 +52,39 @@ namespace er {
 		}
 
 		//-----------------------------------------------
+		// We store data per dataset so we can browse in an organized way.
+		//
+
+		std::string dataset_root;
+		std::string dataset_config_path;
+		json current_dataset;
+
+		// Our current dataset is a large JSON file which contains every
+		// folder we processed with information regarding the data analysed and
+		// notes written by classification
+
+		void load_dataset(std::string json_config);
+
+		void save_current_dataset();
+
+		// We save a sort description of what the data is in a file
+		// so we can classify files easily.
+		void save_description(std::string description);
+
+		//-----------------------------------------------
 		// Loads the application configuration.
 		// Here we specify if we have a frontend or not.
 
 		std::string json_configuration_file_path_;
 
 		void load_configuration(std::string json_configuration_file_path_);
+
+		// Specify a folder to save the config.
+		// We might want to read specific configs for different data sets.
+
+		void save_configuration(std::string json_configuration_file_path_);
+
+		// Save the current config into the main folder
 		void save_configuration();
 
 		bool invalidate_playback = false;

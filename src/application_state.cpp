@@ -239,6 +239,26 @@ Eigen::Vector4f er::app_state::load_vec4f(const char *name)
 	return out;
 }
 
+void er::app_state::load_dataset(std::string root_folder)
+{
+	try {
+		dataset_config_path = root_folder + std::string("/")
+			+ DEFAULT_DATASET_CONFIG;
+
+		printf_("Reading dataset", dataset_config_path.c_str());
+		std::ifstream i(dataset_config_path.c_str());
+		i >> current_dataset;
+	} catch (const std::exception & e) {
+		// No config? No worries, we create a new one.
+		current_dataset["version"] = __DATE__ __TIME__;
+		save_current_dataset();
+	}
+
+	printf_h2("Dataset");
+
+	std::cout << std::setw(4) << current_dataset << std::endl;
+}
+
 void er::app_state::load_configuration(std::string json_config)
 {
 	try {
@@ -258,13 +278,31 @@ void er::app_state::load_configuration(std::string json_config)
 	std::cout << std::setw(4) << config << std::endl;
 }
 
-void er::app_state::save_configuration()
+void er::app_state::save_description(std::string short_description)
+{
+
+}
+
+void er::app_state::save_current_dataset()
+{
+	std::ofstream o(dataset_config_path);
+	o << current_dataset.dump(4);
+
+	std::cout << "Save Dataset " << dataset_config_path  << std::endl;
+}
+
+void er::app_state::save_configuration(std::string json_config)
 {
 	config_to_json();
-	std::ofstream o(config_path.c_str());
+	std::ofstream o(json_config);
 	o << config.dump(4);
 
-	std::cout << "Save" << std::endl;
+	std::cout << "Save Config" << json_config << std::endl;
+}
+
+void er::app_state::save_configuration()
+{
+	save_configuration(config_path.c_str());
 }
 
 void er::app_state::set_current_file(std::string filepath_playback)
@@ -278,6 +316,11 @@ void er::app_state::set_current_file(std::string filepath_playback)
 		capture_bag = filepath_playback + "/capture.bag";
 		capture_folder = filepath_playback;
 	}
+
+	path capture_tmp(capture_folder);
+	dataset_root = capture_tmp.parent_path().string();
+
+	load_dataset(dataset_root);
 
 	if (!is_regular_file(capture_bag)) {
 		std::cerr << "File doesn't exist" << filepath_playback << std::endl;

@@ -161,6 +161,7 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				static char buf[64] = "Short Description";
 				if (ImGui::InputText("Short Description", buf, IM_ARRAYSIZE(buf))) {
 					printf("TODO: Save description - Renamed file data\n");
+					app_state::get().save_description(buf);
 				}
 
 				if (ImGui::Button("Load##Analysis", ImVec2((w - p) / 2.f, 0))) {

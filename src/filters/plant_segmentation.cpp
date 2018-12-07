@@ -126,6 +126,11 @@ plants_segmentation_filter::~plants_segmentation_filter()
 
 bool plants_segmentation_filter::process()
 {
+	if (cloud_in->points.size() == 0) {
+		printf("! plants_segmentation_filter::process() No point cloud\n");
+		return true;
+	}
+
 	printf(" plants_segmentation_filter::process() \n");
 	cloud_out->clear();
 	cloud_voxel->clear();
@@ -259,8 +264,8 @@ bool plants_segmentation_filter::process()
 				p.view_radius = 0;
 				plants.push_back(p);
 
-				frame_seg[j].invalidate_cloud(cloud_cluster);
-				frame_seg[j].visible = true;
+				plants_seg[j].invalidate_cloud(cloud_cluster);
+				plants_seg[j].visible = true;
 			}
 
 			j++;
@@ -269,7 +274,7 @@ bool plants_segmentation_filter::process()
 		plants_mutex.unlock();
 
 		while (j < MAX_PLANTS) {
-			frame_seg[j++].visible = false;
+			plants_seg[j++].visible = false;
 		}
 	}
 
@@ -278,7 +283,7 @@ bool plants_segmentation_filter::process()
 			// Pass the views to the subrenderer
 			if (view.sub_views.size() == 0) {
 				for (size_t t = 0; t < MAX_PLANTS; t++)
-					view.sub_views.push_back(&frame_seg[t]);
+					view.sub_views.push_back(&plants_seg[t]);
 			}
 			return;
 		}
@@ -361,7 +366,7 @@ void plants_segmentation_filter::render_ui()
 	static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
 
 	if (app_state::get().show_image_view) {
-
+#ifdef WIN32
 		if (tex_id == 0) {
 			glGenTextures(1, &tex_id);
 		}
@@ -406,6 +411,7 @@ void plants_segmentation_filter::render_ui()
 			ImGui::EndTooltip();
 		}
 		ImGui::End();
+#endif
 	}
 
 	if (app_state::get().show_voxel_view) {
