@@ -245,18 +245,18 @@ void er::app_state::load_dataset(std::string root_folder)
 		dataset_config_path = root_folder + std::string("/")
 			+ DEFAULT_DATASET_CONFIG;
 
-		printf_("Reading dataset", dataset_config_path.c_str());
+		printf_("Reading dataset %s\n", dataset_config_path.c_str());
 		std::ifstream i(dataset_config_path.c_str());
-		i >> current_dataset;
+		i >> json_dataset;
 	} catch (const std::exception & e) {
 		// No config? No worries, we create a new one.
-		current_dataset["version"] = __DATE__ __TIME__;
+		json_dataset["version"] = __DATE__ __TIME__;
 		save_current_dataset();
 	}
 
 	printf_h2("Dataset");
 
-	std::cout << std::setw(4) << current_dataset << std::endl;
+	std::cout << std::setw(4) << json_dataset << std::endl;
 }
 
 void er::app_state::load_configuration(std::string json_config)
@@ -280,15 +280,17 @@ void er::app_state::load_configuration(std::string json_config)
 
 void er::app_state::save_description(std::string short_description)
 {
-
+	json_data["short_description"] = short_description;
+	save_current_dataset();
 }
 
 void er::app_state::save_current_dataset()
 {
+	populate_data_file();
 	std::ofstream o(dataset_config_path);
-	o << current_dataset.dump(4);
+	o << json_dataset.dump(4);
 
-	std::cout << "Save Dataset " << dataset_config_path  << std::endl;
+	std::cout << "Save Dataset " << dataset_config_path << std::endl;
 }
 
 void er::app_state::save_configuration(std::string json_config)
@@ -305,6 +307,11 @@ void er::app_state::save_configuration()
 	save_configuration(config_path.c_str());
 }
 
+void er::app_state::populate_data_file()
+{
+	json_dataset[capture_id] = json_data;
+}
+
 void er::app_state::set_current_file(std::string filepath_playback)
 {
 	printf("Set current file\n");
@@ -318,9 +325,22 @@ void er::app_state::set_current_file(std::string filepath_playback)
 	}
 
 	path capture_tmp(capture_folder);
+
+	size_t len = capture_tmp.parent_path().size();
+	if (len != 0)
+		len++;
+
+	capture_id = capture_folder.substr(len);
+
 	dataset_root = capture_tmp.parent_path().string();
 
 	load_dataset(dataset_root);
+
+	json_data = json_dataset[capture_id];
+
+	json_dataset["last_bag"] = capture_bag;
+	json_dataset["last_id"] = capture_id;
+	save_current_dataset();
 
 	if (!is_regular_file(capture_bag)) {
 		std::cerr << "File doesn't exist" << filepath_playback << std::endl;

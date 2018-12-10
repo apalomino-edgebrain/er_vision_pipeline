@@ -211,6 +211,10 @@ bool plants_segmentation_filter::process()
 		pos += size_w;
 	}
 
+	for (size_t j = 0; j < MAX_PLANTS; j++) {
+		plants_seg[j].visible = false;
+	}
+
 	if (app_state::get().show_euclidian_cluster) {
 		pcl::copyPointCloud(*cloud_voxel, *cloud_filtered);
 
@@ -272,10 +276,6 @@ bool plants_segmentation_filter::process()
 		}
 
 		plants_mutex.unlock();
-
-		while (j < MAX_PLANTS) {
-			plants_seg[j++].visible = false;
-		}
 	}
 
 	view.f_external_render = [&] (void *viewer_ptr) {

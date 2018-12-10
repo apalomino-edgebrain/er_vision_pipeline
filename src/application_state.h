@@ -57,7 +57,7 @@ namespace er {
 
 		std::string dataset_root;
 		std::string dataset_config_path;
-		json current_dataset;
+		json json_dataset;
 
 		// Our current dataset is a large JSON file which contains every
 		// folder we processed with information regarding the data analysed and
@@ -88,8 +88,26 @@ namespace er {
 		void save_configuration();
 
 		bool invalidate_playback = false;
+
+		//-----------------------------------------------
+		// Flush all the data that we want to store from processing this
+		// including notes about the data.
+		void populate_data_file();
+
+		// Full path to the folder containing the dataset with JSON files
+		// Example: X:\data\8799ecf\180904_123201
 		std::string capture_folder;
+
+		// Full path to the current bag being played
+		// Example: X:\data\8799ecf\180904_123201\capture.bag
 		std::string capture_bag;
+
+		// Just the ID of the file
+		// 180904_123201
+		std::string capture_id;
+
+		// Current data options
+		json json_data;
 
 		void set_current_file(std::string filepath_playback);
 
