@@ -509,9 +509,6 @@ void plants_segmentation_filter::render_ui()
 		plants_mutex.unlock();
 
 		draw_list->PopClipRect();
-
-		//if (ImGui::Button("Clear"))
-		//	points.clear();
 	}
 	ImGui::End();
 #endif
