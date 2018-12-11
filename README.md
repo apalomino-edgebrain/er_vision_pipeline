@@ -77,6 +77,8 @@ OpenCV and PCL processing of our sample data
 
 Check INSTALL.md to see how to setup the system
 
+![](https://github.com/earthrover/er_vision_pipeline/blob/e91479f08560cd10862ca5cb55423170f7a3e8ac/assets/image.png?raw=true)
+
 # System
 
 We use the Realsense D435 camera as our main platform.
