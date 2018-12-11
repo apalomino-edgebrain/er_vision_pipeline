@@ -110,6 +110,31 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 					ImGui::EndMenu();
 				}
 
+				if (ImGui::BeginMenu("Open by description")) {
+					json j_object = app_state::get().json_dataset["datasets"];
+
+					if (j_object != nullptr) {
+						for (auto& x : json::iterator_wrapper(j_object)) {
+							json j_data = x.value();
+
+							std::string bag_file = j_data["bag_file"];
+							try {
+								std::string description = j_data["short_description"];
+								if (ImGui::MenuItem(description.c_str())) {
+									std::cout << "---------- Open ---------------\n";
+									std::cout << "key: " << x.key() << ", value: " << x.value() << '\n';
+
+									open_file = bag_file;
+								}
+							} catch (const std::exception &e) {
+								printf("! No description yet\n");
+							}
+						}
+					}
+
+					ImGui::EndMenu();
+				}
+
 				ImGui::EndMenu();
 			}
 
@@ -158,7 +183,17 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 				float w = ImGui::GetContentRegionAvailWidth();
 				float p = ImGui::GetStyle().FramePadding.x;
 
-				static char buf[64] = "Short Description";
+				static char buf[256] = "Short Description";
+				try {
+					std::string description = app_state::get().json_data["short_description"];
+					if (description.size() > 0) {
+						memset(buf, 0, sizeof(buf));
+						strncpy(buf, description.c_str(), description.size());
+					}
+				} catch (const std::exception &e) {
+					printf("No description yet!\n");
+				}
+
 				if (ImGui::InputText("Short Description", buf, IM_ARRAYSIZE(buf))) {
 					printf("TODO: Save description - Renamed file data\n");
 					app_state::get().save_description(buf);

@@ -309,7 +309,7 @@ void er::app_state::save_configuration()
 
 void er::app_state::populate_data_file()
 {
-	json_dataset[capture_id] = json_data;
+	json_dataset["datasets"][capture_id] = json_data;
 }
 
 void er::app_state::set_current_file(std::string filepath_playback)
@@ -330,18 +330,6 @@ void er::app_state::set_current_file(std::string filepath_playback)
 	if (len != 0)
 		len++;
 
-	capture_id = capture_folder.substr(len);
-
-	dataset_root = capture_tmp.parent_path().string();
-
-	load_dataset(dataset_root);
-
-	json_data = json_dataset[capture_id];
-
-	json_dataset["last_bag"] = capture_bag;
-	json_dataset["last_id"] = capture_id;
-	save_current_dataset();
-
 	if (!is_regular_file(capture_bag)) {
 		std::cerr << "File doesn't exist" << filepath_playback << std::endl;
 #ifdef WIN32
@@ -352,6 +340,18 @@ void er::app_state::set_current_file(std::string filepath_playback)
 	} else {
 		invalidate_playback = true;
 	}
+
+	capture_id = capture_folder.substr(len);
+	dataset_root = capture_tmp.parent_path().string();
+
+	load_dataset(dataset_root);
+
+	json_data = json_dataset["datasets"][capture_id];
+	json_data["bag_file"] = capture_bag;
+
+	json_dataset["last_bag"] = capture_bag;
+	json_dataset["last_id"] = capture_id;
+	save_current_dataset();
 
 	try {
 		json j_object = config["recent_files"];
