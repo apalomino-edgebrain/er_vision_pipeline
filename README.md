@@ -70,14 +70,13 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # ER Vision Pipeline
-====================
+
+![](https://github.com/earthrover/er_vision_pipeline/blob/e91479f08560cd10862ca5cb55423170f7a3e8ac/assets/plants_classifier.png)
 
 This project is our image analyse for our data captured ROS bags.
 OpenCV and PCL processing of our sample data
 
 Check INSTALL.md to see how to setup the system
-
-![](https://github.com/earthrover/er_vision_pipeline/blob/e91479f08560cd10862ca5cb55423170f7a3e8ac/assets/image.png?raw=true)
 
 # System
 
@@ -92,4 +91,6 @@ Laser Wavelength 850nm ± 10 nm nominal @ 20°C
 Left and Right Imager are able to see in the following wavelengths:
 
 400 to 865 (Visible and Infrared) @ 98% transmission
-rate or higher at all viewing and transmitting angles
+rate or higher at all viewing and transmitting angles
+# Example
+![](https://github.com/earthrover/er_vision_pipeline/blob/e91479f08560cd10862ca5cb55423170f7a3e8ac/assets/image.png?raw=true)
