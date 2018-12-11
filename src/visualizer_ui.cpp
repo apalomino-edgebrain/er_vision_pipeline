@@ -110,6 +110,7 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 					ImGui::EndMenu();
 				}
 
+				ImGui::Separator();
 				if (ImGui::BeginMenu("Open by description")) {
 					json j_object = app_state::get().json_dataset["datasets"];
 
@@ -120,7 +121,9 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 							std::string bag_file = j_data["bag_file"];
 							try {
 								std::string description = j_data["short_description"];
-								if (ImGui::MenuItem(description.c_str())) {
+								std::string text = x.key() + std::string(" :: ") + description;
+
+								if (ImGui::MenuItem(text.c_str())) {
 									std::cout << "---------- Open ---------------\n";
 									std::cout << "key: " << x.key() << ", value: " << x.value() << '\n';
 
