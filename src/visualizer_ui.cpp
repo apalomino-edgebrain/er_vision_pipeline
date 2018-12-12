@@ -118,7 +118,7 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 						for (auto& x : json::iterator_wrapper(j_object)) {
 							json j_data = x.value();
 
-							std::string bag_file = j_data["bag_file"];
+							std::string bag_file = app_state::get().get_bagfile_from_id(x.key());
 							try {
 								std::string description = j_data["short_description"];
 								std::string text = x.key() + std::string(" :: ") + description;

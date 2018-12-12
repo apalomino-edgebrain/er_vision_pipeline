@@ -312,6 +312,11 @@ void er::app_state::populate_data_file()
 	json_dataset["datasets"][capture_id] = json_data;
 }
 
+std::string er::app_state::get_bagfile_from_id(std::string folder_id)
+{
+	return dataset_root + std::string("/") + folder_id;
+}
+
 void er::app_state::set_current_file(std::string filepath_playback)
 {
 	printf("Set current file\n");
@@ -347,8 +352,6 @@ void er::app_state::set_current_file(std::string filepath_playback)
 	load_dataset(dataset_root);
 
 	json_data = json_dataset["datasets"][capture_id];
-	json_data["bag_file"] = capture_bag;
-
 	json_dataset["last_bag"] = capture_bag;
 	json_dataset["last_id"] = capture_id;
 	save_current_dataset();

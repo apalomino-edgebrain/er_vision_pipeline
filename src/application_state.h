@@ -109,6 +109,7 @@ namespace er {
 		// Current data options
 		json json_data;
 
+		std::string get_bagfile_from_id(std::string folder_id);
 		void set_current_file(std::string filepath_playback);
 
 		//-----------------------------------------------
