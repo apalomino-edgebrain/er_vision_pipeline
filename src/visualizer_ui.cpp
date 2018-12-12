@@ -130,7 +130,9 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 									open_file = bag_file;
 								}
 							} catch (const std::exception &e) {
+#ifdef DEBUG
 								printf("! No description yet\n");
+#endif
 							}
 						}
 					}
@@ -194,7 +196,9 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 						strncpy(buf, description.c_str(), description.size());
 					}
 				} catch (const std::exception &e) {
+#ifdef DEBUG
 					printf("No description yet!\n");
+#endif
 				}
 
 				if (ImGui::InputText("Short Description", buf, IM_ARRAYSIZE(buf))) {
