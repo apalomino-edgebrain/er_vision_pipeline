@@ -331,7 +331,8 @@ void er::app_state::set_current_file(std::string filepath_playback)
 
 	path capture_tmp(capture_folder);
 
-	size_t len = capture_tmp.parent_path().size();
+	std::string parent = capture_tmp.parent_path().string();
+	size_t len = parent.size();
 	if (len != 0)
 		len++;
 
