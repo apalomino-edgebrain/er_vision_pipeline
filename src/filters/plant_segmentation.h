@@ -56,8 +56,8 @@
 // Fast and dirty implementation for a 2.5d image analisis
 // to find the different plants.
 
-#define FLOOR_SIZE_W 128
-#define FLOOR_SIZE_H 128
+#define FLOOR_SIZE_W 512
+#define FLOOR_SIZE_H 512
 
 // We can only see 32 plants at the same time.
 #define MAX_PLANTS 32

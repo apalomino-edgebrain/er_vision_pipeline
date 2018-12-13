@@ -47,7 +47,6 @@
 
 #ifdef USE_IMGUI
 #include <igl/opengl/glfw/Viewer.h>
-#endif
 
 #define MAX_COLORS 15
 static const float colors[3 * MAX_COLORS] = {
@@ -67,6 +66,7 @@ static const float colors[3 * MAX_COLORS] = {
 	0, 128, 128, // Teal
 	0, 0, 128 // Navy
 };
+#endif
 
 using namespace pcl;
 
@@ -126,11 +126,16 @@ plants_segmentation_filter::~plants_segmentation_filter()
 bool plants_segmentation_filter::process()
 {
 	if (cloud_in->points.size() == 0) {
+#ifdef DEBUG
 		printf("! plants_segmentation_filter::process() No point cloud\n");
+#endif
 		return true;
 	}
 
+#ifdef DEBUG
 	printf(" plants_segmentation_filter::process() \n");
+#endif
+
 	cloud_out->clear();
 	cloud_voxel->clear();
 	cloud_filtered->clear();
@@ -169,7 +174,9 @@ bool plants_segmentation_filter::process()
 			std::cout << "points in total Cloud : " << cloud_voxel->points.size() << std::endl;
 			// get the cluster centroids
 		} else {
+#ifdef DEBUG
 			printf(" No cloud to process!");
+#endif
 			return true;
 		}
 
@@ -242,7 +249,6 @@ bool plants_segmentation_filter::process()
 			cloud_cluster->width = cloud_cluster->points.size();
 			cloud_cluster->height = 1;
 			cloud_cluster->is_dense = true;
-			printf("%d: Found cluster %d \n", j, cloud_cluster->width);
 
 			if (j < MAX_PLANTS) {
 				// TODO: Replace this function with computeNDCentroid
@@ -250,11 +256,13 @@ bool plants_segmentation_filter::process()
 				for (int t = 0; t < cloud_cluster->width; t++) {
 					centroid.add(cloud_cluster->points[t]);
 
+#ifdef USE_IMGUI
 					// Get a color from our fancy color table
 					int c = (j % MAX_COLORS) * 3;
 					cloud_cluster->points[t].r = colors[c + 0];
 					cloud_cluster->points[t].g = colors[c + 1];
 					cloud_cluster->points[t].b = colors[c + 2];
+#endif
 				}
 
 				pcl::PointXYZRGBA c1;
@@ -269,6 +277,10 @@ bool plants_segmentation_filter::process()
 
 				plants_seg[j].invalidate_cloud(cloud_cluster);
 				plants_seg[j].visible = true;
+
+#ifndef USE_IMGUI
+				printf("%d: Found cluster %d \n", j, cloud_cluster->width);
+#endif
 			}
 
 			j++;
@@ -277,6 +289,7 @@ bool plants_segmentation_filter::process()
 		plants_mutex.unlock();
 	}
 
+#ifdef USE_IMGUI
 	view.f_external_render = [&] (void *viewer_ptr) {
 		if (app_state::get().show_euclidian_cluster) {
 			// Pass the views to the subrenderer
@@ -350,6 +363,7 @@ bool plants_segmentation_filter::process()
 			Eigen::Vector3d { 1, 0, 1 }, text);
 #endif
 	};
+#endif
 
 	return true;
 }

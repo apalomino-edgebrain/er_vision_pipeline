@@ -84,6 +84,7 @@ void er::frame_data::calculate_view()
 
 void er::frame_data::render(void *viewer_ptr)
 {
+#ifdef USE_IMGUI
 	if (!visible)
 		return;
 
@@ -138,6 +139,7 @@ void er::frame_data::render(void *viewer_ptr)
 	if (f_external_render != nullptr) {
 		f_external_render(viewer_ptr);
 	}
+#endif
 }
 
 void er::frame_data::invalidate_cloud(pcl_ptr cloud_)
@@ -369,8 +371,7 @@ void testing()
 //-------------------------------------------------------------------------
 void er::worker_t::start()
 {
-	//testing();
-
+#ifdef USE_IMGUI
 	printf("Start thread\n");
 
 	// Load an example mesh in OFF format
@@ -404,27 +405,6 @@ void er::worker_t::start()
 		viewer.append_mesh();
 	}
 
-	// Loads a plane grid for testing purposes
-/*
-#ifdef WIN32
-	{
-
-		Eigen::MatrixXd V, C;
-		Eigen::MatrixXi F;
-
-		igl::readOFF("S:/er_vision_pipeline/assets/grid.off", V, F);
-
-		Eigen::VectorXd radius(V.rows());
-		radius.setConstant(0.01 * viewer.core.camera_base_zoom);
-
-		Eigen::VectorXd Z = V.col(2);
-		igl::jet(Z, true, C);
-
-		viewer.data().set_points(V, C, radius);
-
-	}
-#endif
-*/
 	//------------------------------------------------------------
 
 	initialize_visualizer_ui(viewer);
@@ -474,6 +454,7 @@ void er::worker_t::start()
 	viewer.launch();
 	printf("Closing down");
 	er::app_state::get().should_close_app = true;
+#endif
 }
 
 std::vector<er::frame_data *> &er::worker_t::get_data_views()

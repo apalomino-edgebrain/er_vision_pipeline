@@ -67,7 +67,10 @@ using namespace er;
 
 bool ground_filter::process()
 {
+#ifdef DEBUG
 	printf(" ground_filter::process() \n");
+#endif
+
 	start_process();
 
 	// TODO: Do not clear and reuse points
@@ -256,6 +259,7 @@ bool ground_filter::process()
 
 	view.visible = er::app_state::get().show_ground;
 
+#ifdef USE_IMGUI
 	view.f_external_render = [&] (void *viewer_ptr) {
 		char text[256];
 
@@ -299,8 +303,8 @@ bool ground_filter::process()
 
 		view.render_plane(viewer_ptr, ground_plane,
 			view.bbx_m, view.bbx_M);
-
 	};
+#endif
 
 	if (f_callback_output != nullptr)
 		f_callback_output(cloud_out);

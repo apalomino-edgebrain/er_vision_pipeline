@@ -53,7 +53,9 @@ using namespace er;
 
 bool plants_filter::process()
 {
+#ifdef DEBUG
 	printf(" plants_filter::process() \n");
+#endif
 	cloud_out->clear();
 
 	Eigen::Transform<double, 3, Eigen::Affine> ground_transform;
@@ -98,7 +100,7 @@ bool plants_filter::process()
 					cloud_out->points.push_back(p);
 	}
 
-
+#ifdef USE_IMGUI
 	view.f_external_render = [&] (void *viewer_ptr) {
 		char text[512];
 
@@ -116,6 +118,7 @@ bool plants_filter::process()
 			view.point_scale = 0.00f;
 		}
 	};
+#endif
 
 	if (f_callback_output != nullptr)
 		f_callback_output(cloud_out);
@@ -130,12 +133,14 @@ void plants_filter::set_ground_filter(ground_filter *grnd_filter_)
 
 void plants_filter::invalidate_view()
 {
+#ifdef USE_IMGUI
 	if (app_state::get().show_plants) {
 		view.visible = true;
 		er::process_unit::invalidate_view();
 	} else {
 		view.visible = false;
 	}
+#endif
 }
 
 void plants_filter::render_ui()

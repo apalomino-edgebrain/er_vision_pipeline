@@ -53,6 +53,7 @@ using namespace er;
 
 void flush_settings(igl::opengl::glfw::Viewer &viewer)
 {
+#ifdef USE_IMGUI
 	// Save camera position
 	app_state::get().save_vec3f("camera_translation", viewer.core.camera_translation);
 	Eigen::Vector4f v4 = { viewer.core.trackball_angle.x(), viewer.core.trackball_angle.y(), viewer.core.trackball_angle.z(), viewer.core.trackball_angle.w() };
@@ -61,10 +62,12 @@ void flush_settings(igl::opengl::glfw::Viewer &viewer)
 	app_state::get().config["camera_zoom"] = viewer.core.camera_zoom;
 
 	er::app_state::get().save_configuration();
+#endif
 }
 
 void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 {
+#ifdef USE_IMGUI
 	// Attach a menu plugin
 	viewer.plugins.push_back(&menu);
 
@@ -334,7 +337,6 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 		}
 
 		if (app_state::get().show_analysis) {
-		{
 			ImGui::Begin("Analysis", &app_state::get().show_analysis, flags);
 
 			if (ImGui::Checkbox("Show ground", &app_state::get().show_ground)) {
@@ -409,16 +411,15 @@ void initialize_visualizer_ui(igl::opengl::glfw::Viewer &viewer)
 
 			ImGui::End();
 		}
-	}
 
-	er::pipeline er_pipe = er::pipeline::get();
-	er_pipe.render_ui();
+		er::pipeline er_pipe = er::pipeline::get();
+		er_pipe.render_ui();
 
-	// We defer the file opening since we might break the interface by changing
-	// state.
+		// We defer the file opening since we might break the interface by changing
+		// state.
 
 		if (open_file.size() > 0)
 			app_state::get().set_current_file(open_file);
-
-};
+	};
+#endif
 }

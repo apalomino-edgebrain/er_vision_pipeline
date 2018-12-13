@@ -43,113 +43,7 @@
 #include "application_state.h"
 
 using namespace er;
-
-// Registers the state variable and callbacks to allow mouse control of the pointcloud
-void register_glfw_callbacks(window& app, state& app_state)
-{
-	app.on_left_mouse = [&] (bool pressed) {
-		app_state.ml = pressed;
-	};
-
-	app.on_mouse_scroll = [&] (double xoffset, double yoffset) {
-		app_state.offset_x += static_cast<float>(xoffset);
-		app_state.offset_y += static_cast<float>(yoffset);
-	};
-
-	app.on_mouse_move = [&] (double x, double y) {
-		if (app_state.ml) {
-			app_state.yaw -= (x - app_state.last_x);
-			app_state.yaw = std::max(app_state.yaw, -120.0);
-			app_state.yaw = std::min(app_state.yaw, +120.0);
-			app_state.pitch += (y - app_state.last_y);
-			app_state.pitch = std::max(app_state.pitch, -80.0);
-			app_state.pitch = std::min(app_state.pitch, +80.0);
-		}
-		app_state.last_x = x;
-		app_state.last_y = y;
-	};
-
-	app.on_key_release = [&] (int key) {
-		if (key == 32) // Escape
-		{
-			app_state.yaw = app_state.pitch = 0; app_state.offset_x = app_state.offset_y = 0.0;
-		}
-	};
-}
-
-// Handles all the OpenGL calls needed to display the point cloud
-void draw_pointcloud(window& app, state& app_state, const std::vector<pcl_ptr>& points)
-{
-	// OpenGL commands that prep screen for the pointcloud
-	glPopMatrix();
-	glPushAttrib(GL_ALL_ATTRIB_BITS);
-
-	float width = app.width(), height = app.height();
-
-	glClearColor(153.f / 255, 153.f / 255, 153.f / 255, 1);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	gluPerspective(60, width / height, 0.01f, 10.0f);
-
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	gluLookAt(0, 0, 0, 0, 0, 1, 0, -1, 0);
-
-	glTranslatef(0, 0, 0.5f + app_state.offset_y*0.05f);
-	glRotated(app_state.pitch, 1, 0, 0);
-	glRotated(app_state.yaw, 0, 1, 0);
-	glTranslatef(0, 0, -0.5f);
-
-	glPointSize(width / 640);
-	glEnable(GL_TEXTURE_2D);
-
-	int color = 0;
-
-	for (auto&& pc : points) {
-		glBegin(GL_POINTS);
-		glPointSize(5);
-
-		for (int i = 0; i < pc->points.size(); i++) {
-			auto&& p = pc->points[i];
-			if (p.z) {
-				// upload the point and texture coordinates only for points we have depth data for
-				glColor3f(float(p.r) / 255.f, float(p.g) / 255.f, float(p.b) / 255.f);
-				glVertex3f(p.x, -p.y, p.z);
-			}
-		}
-
-		glEnd();
-	}
-
-	// OpenGL cleanup
-	glPopMatrix();
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-	glPopAttrib();
-	glPushMatrix();
-}
-
-bool get_texcolor(const rs2::video_frame *frame, float u, float v, uint8_t &r, uint8_t &g, uint8_t &b)
-{
-	auto ptr = frame;
-	if (ptr == nullptr) {
-		return false;
-	}
-
-	const int w = ptr->get_width(), h = ptr->get_height();
-	int x = std::min(std::max(int(u*w + .5f), 0), w - 1);
-	int y = std::min(std::max(int(v*h + .5f), 0), h - 1);
-	int idx = x * ptr->get_bits_per_pixel() / 8 + y * ptr->get_stride_in_bytes();
-	const auto texture_data = reinterpret_cast<const uint8_t*>(ptr->get_data());
-
-	r = texture_data[idx++];
-	g = texture_data[idx++];
-	b = texture_data[idx];
-
-	return true;
-}
+using namespace rs2;
 
 bool get_texinfrared(const rs2::video_frame *frame, float u, float v, uint8_t &a)
 {
@@ -216,77 +110,6 @@ pcl_ptr points_to_pcl(rs2::pointcloud &pc, const rs2::video_frame &color_depth_m
 	return cloud;
 }
 
-float3 colors[] { { 0.8f, 0.1f, 0.3f },
-				  { 0.1f, 0.9f, 0.5f },
-};
-
-using namespace rs2;
-
-void draw_polygons(window& app, state& app_state)
-{
-	// OpenGL commands that prep screen for the pointcloud
-	glPopMatrix();
-	glPushAttrib(GL_ALL_ATTRIB_BITS);
-
-	float width = app.width(), height = app.height();
-
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	gluPerspective(60, width / height, 0.01f, 10.0f);
-
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	gluLookAt(0, 0, 0, 0, 0, 1, 0, -1, 0);
-
-	glTranslatef(0, 0, app_state.offset_y*0.05f);
-	glRotated(app_state.pitch, 1, 0, 0);
-	glRotated(app_state.yaw, 0, 1, 0);
-	glTranslatef(0, 0, 0.5f);
-
-	//----------
-	glBegin(GL_TRIANGLES);
-
-	glColor3f(0.5f, 0.0f, 1.0f);
-	glVertex3f(-1.0f, -0.5f, 4.0f);
-	glVertex3f(1.0f, 0.5f, 4.0f);
-	glVertex3f(0.0f, 0.5f, 4.0f);
-	glEnd();
-	//----------
-
-	glPopMatrix();
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
-	glPopAttrib();
-	glPushMatrix();
-}
-
-void extract_plants(pcl_ptr cloud)
-{
-	// Set up KDTree
-	pcl::KdTreeFLANN<pcl::PointXYZRGBA>::Ptr tree(new pcl::KdTreeFLANN<pcl::PointXYZRGBA>);
-	tree->setInputCloud(cloud);
-
-	// Neighbors containers
-	std::vector<int> k_indices;
-	std::vector<float> k_distances;
-
-	float sigma_s = 1.0f;
-
-	int pnumber = cloud->size();
-
-	for (int point_id = 0; point_id < pnumber; ++point_id) {
-		//tree->radiusSearch(point_id, sigma_s, k_indices, k_distances);
-
-		// For each neighbor
-		/*
-		for (size_t n_id = 0; n_id < k_indices.size(); ++n_id) {
-			float id = k_indices.at(n_id);
-			float dist = sqrt(k_distances.at(n_id));
-		}
-		*/
-	}
-}
-
 int main(int argc, char * argv[]) try {
 
 #ifdef WIN32
@@ -319,13 +142,12 @@ int main(int argc, char * argv[]) try {
 		realtime = false;
 
 	} else {
-		//std::string fname = igl::file_dialog_open();
-
-		std::cout << "Not enough parameters." << std::endl << std::endl;
+		std::cout << "Not enough parameters for playback." << std::endl << std::endl;
 		std::cout << "Use example: " << std::endl;
 		std::cout << "  er-vision ~/data/8799ecf/180904_135414/capture.bag" << std::endl;
 
-		cfg.enable_record_to_file("test.bag");
+		// We enable recording to disk
+		cfg.enable_record_to_file("disk_record.bag");
 	}
 
 	Eigen::initParallel();
@@ -336,11 +158,11 @@ int main(int argc, char * argv[]) try {
 
 	// Construct an object to manage view state
 	state app_state;
-	// register callbacks to allow manipulation of the pointcloud
+
+	// Register callbacks to allow manipulation of the pointcloud
 	register_glfw_callbacks(app, app_state);
 
 	// Declare pointcloud object, for calculating pointclouds and texture mappings
-
 	rs2::colorizer color_map;
 
 	// Create a shared pointer to a pipeline
@@ -426,9 +248,6 @@ int main(int argc, char * argv[]) try {
 			rs2::video_frame color = frames.get_color_frame();
 			rs2::video_frame infrared = frames.get_infrared_frame();
 
-			// Find and colorize the depth data
-			// rs2::video_frame color_depth_map = color_map(frames.get_depth_frame());
-
 			// Generate the pointcloud and texture mappings
 			// We want the points object to be persistent so we can display the last cloud when a frame drops
 
@@ -484,7 +303,6 @@ int main(int argc, char * argv[]) try {
 
 			// All this section is just DEMO Code
 			// We should pass the point cloud directly to the pipeline.
-
 			{
 				rs2::points points;
 				points = pc.calculate(depth);
@@ -583,9 +401,6 @@ int main(int argc, char * argv[]) try {
 			// rs2_frame* frame = rs2_extract_frame(frames, i, &e);
 			// float dist_to_center = rs2_depth_frame_get_distance(frame, width / 2, height / 2, &e);
 
-			//----------- Normal computation ----------------------
-			// Create the normal estimation class, and pass the input dataset to it
-
 			//------------- Filter limit ------------------------
 			if (app_state::get().bool_distance_filter) {
 				pcl_ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZRGBA>);
@@ -593,24 +408,9 @@ int main(int argc, char * argv[]) try {
 				pass.setInputCloud(cloud);
 				pass.setFilterFieldName("z");
 				pass.setFilterLimits(app_state::get().cur_min_clip[2], app_state::get().cur_max_clip[2]);
-
-				//pass.setFilterFieldName("y");
-				//pass.setFilterLimits(cur_min_clip[1], cur_max_clip[1]);
-
 				pass.filter(*cloud_filtered);
 
 				layers.push_back(cloud_filtered);
-				/*
-				pcl::NormalEstimation<pcl::PointXYZRGBA, pcl::Normal> ne;
-				ne.setInputCloud(cloud_filtered);
-				pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>());
-				ne.setSearchMethod(tree);
-				pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
-				ne.setRadiusSearch(0.3);
-
-				// Compute the features
-				ne.compute(*cloud_normals);
-				*/
 			} else
 				if (app_state::get().bool_cloud_raw) {
 					layers.push_back(cloud);
@@ -630,6 +430,7 @@ int main(int argc, char * argv[]) try {
 
 			//------------- COLOR Cluster ------------------------
 
+			// Creates a pretty picture set of clustered data by color.
 			if (app_state::get().bool_color_cluster && cloud->points.size() > 0) {
 
 				pcl::search::Search <pcl::PointXYZRGBA>::Ptr tree = boost::shared_ptr<pcl::search::Search<pcl::PointXYZRGBA> >(new pcl::search::KdTree<pcl::PointXYZRGBA>);
@@ -658,30 +459,6 @@ int main(int argc, char * argv[]) try {
 					layers.push_back(colored_cloud);
 					printf("TODO!");
 				}
-			}
-
-/*
-			// Normal estimation
-			pcl::NormalEstimation<pcl::PointXYZRGBA, pcl::Normal> ne;
-			ne.setInputCloud(cloud);
-			pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>());
-
-			ne.setSearchMethod(tree);
-			ne.setKSearch(20);
-
-			pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
-			//ne.setRadiusSearch(0.3);
-			ne.compute(*cloud_normals);
-*/
-
-			//* normals should not contain the point normals + surface curvatures
-
-			// Concatenate the XYZ and normal fields*
-			//pcl::PointCloud<pcl::PointNormal>::Ptr cloud_with_normals(new pcl::PointCloud<pcl::PointNormal>);
-			//pcl::concatenateFields(*cloud, *normals, *cloud_with_normals);
-
-			if (app_state::get().bool_extract_plants) {
-				extract_plants(cloud);
 			}
 		}
 
