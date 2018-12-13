@@ -46,8 +46,7 @@
 #include <vtkCubeSource.h>
 
 #ifdef USE_IMGUI
-#include <GL/gl3w.h>
-#include <GLFW/glfw3.h>
+#include <igl/opengl/glfw/Viewer.h>
 #endif
 
 #define MAX_COLORS 15
@@ -369,7 +368,6 @@ void plants_segmentation_filter::render_ui()
 	static const int flags = ImGuiWindowFlags_AlwaysAutoResize;
 
 	if (app_state::get().show_image_view) {
-#ifdef WIN32
        // It seems that we have an issue in Linux to use raw GL.
        // A possible option is that we haven't initialized the GL functions
        // which are normally wrappers and dynamically loaded.
@@ -418,7 +416,6 @@ void plants_segmentation_filter::render_ui()
 			ImGui::EndTooltip();
 		}
 		ImGui::End();
-#endif
 	}
 
 	if (app_state::get().show_voxel_view) {
