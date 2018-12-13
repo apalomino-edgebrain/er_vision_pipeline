@@ -383,12 +383,15 @@ void er::worker_t::start()
 	// Just a basic testing Grid
 	//
 
-#ifdef WIN32
 	{
 		Eigen::MatrixXd V, C;
 		Eigen::MatrixXi F;
 
+#ifdef WIN32
 		igl::readOBJ("S:/er_vision_pipeline/assets/floor.obj", V, F);
+#else
+		igl::readOBJ("../assets/floor.obj", V, F);
+#endif
 
 		Eigen::VectorXd radius(V.rows());
 		radius.setConstant(0.01 * viewer.core.camera_base_zoom);
@@ -400,7 +403,6 @@ void er::worker_t::start()
 		//viewer.data().set_colors(C);
 		viewer.append_mesh();
 	}
-#endif
 
 	// Loads a plane grid for testing purposes
 /*

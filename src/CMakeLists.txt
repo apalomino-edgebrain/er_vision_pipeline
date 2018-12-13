@@ -18,7 +18,7 @@ endif()
 
 set(RAW_ER_CPP application_state.cpp  er-pcl.cpp  er-pipeline.cpp  field_map.cpp  geo_tools.cpp  helpers_ui.cpp  process_3d.cpp  visualizer.cpp  visualizer_ui.cpp
 	algebra/plane.cpp util/er-logging.cpp
-	filters/ground_filter.cpp  filters/plant_extraction.cpp  filters/plant_segmentation.cpp  filters/plant_separation.cpp
+	filters/ground_filter.cpp  filters/plant_extraction.cpp  filters/plant_segmentation.cpp  
 	../libs/libigl/external/imgui/examples/imgui_impl_glfw.cpp ../libs/libigl/external/imgui/imgui.cpp ../libs/libigl/external/imgui/imgui_draw.cpp
 	../libs/libigl/external/libigl-imgui/imgui_impl_opengl3.cpp
 	../libs/libigl/external/glad/src/glad.c
