@@ -1,24 +1,24 @@
 //#############################################################################
-								 /*-:::--.`
-							-+shmMMNmmddmmNMNmho/.
-				 `yyo++osddMms:                  `/yNNy-
-			  yo    +mMy:                       `./dMMdyssssso-
-			  oy  -dMy.                     `-+ssso:.`:mMy`   .ys
-				ho+MN:                  `:osso/.         oMm-   +h
-				+Mmd-           `/syo-                     :MNhs`
-				`NM-.hs`      :syo:                          sMh
-				oMh   :ho``/yy+.                             `MM.
-				hM+    `yNN/`                                 dM+
-				dM/  -sy/`/ho`                                hMo
-				hMo/ho.     :yy-                             dM/
-			:dNM/             :yy:                         yMy
-			sy`:MN.              `+ys-                     +Mm`
-			oy`   :NM+                  .+ys/`           `hMd.ys
-			/sssssyNMm:                   `:sys:`     `oNN+   m-
-						.sNMh+.                   `:sNMdyysssssy:
-						-odMNhs+:-.`    `.-/oydMNh+.
-							`-+shdNMMMMMMMNmdyo/.
-									`````*/
+                                 /*-:::--.`
+                            -+shmMMNmmddmmNMNmho/.
+                 `yyo++osddMms:                  `/yNNy-
+              yo    +mMy:                       `./dMMdyssssso-
+              oy  -dMy.                     `-+ssso:.`:mMy`   .ys
+                ho+MN:                  `:osso/.         oMm-   +h
+                +Mmd-           `/syo-                     :MNhs`
+                `NM-.hs`      :syo:                          sMh
+                oMh   :ho``/yy+.                             `MM.
+                hM+    `yNN/`                                 dM+
+                dM/  -sy/`/ho`                                hMo
+                hMo/ho.     :yy-                             dM/
+            :dNM/             :yy:                         yMy
+            sy`:MN.              `+ys-                     +Mm`
+            oy`   :NM+                  .+ys/`           `hMd.ys
+            /sssssyNMm:                   `:sys:`     `oNN+   m-
+                        .sNMh+.                   `:sNMdyysssssy:
+                        -odMNhs+:-.`    `.-/oydMNh+.
+                            `-+shdNMMMMMMMNmdyo/.
+                                    `````*/
 //#############################################################################
 // Plant extraction process_unit
 //#############################################################################
@@ -81,7 +81,7 @@ using namespace er;
 
 plant_definition::plant_definition()
 {
-//	printf("+ Plant processed\n");
+
 }
 
 //------ Plant discovery & segmentation ------

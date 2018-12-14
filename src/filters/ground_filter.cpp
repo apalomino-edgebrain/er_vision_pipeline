@@ -1,24 +1,24 @@
 //#############################################################################
-								 /*-:::--.`
-							-+shmMMNmmddmmNMNmho/.
-				 `yyo++osddMms:                  `/yNNy-
-			  yo    +mMy:                       `./dMMdyssssso-
-			  oy  -dMy.                     `-+ssso:.`:mMy`   .ys
-				ho+MN:                  `:osso/.         oMm-   +h
-				+Mmd-           `/syo-                     :MNhs`
-				`NM-.hs`      :syo:                          sMh
-				oMh   :ho``/yy+.                             `MM.
-				hM+    `yNN/`                                 dM+
-				dM/  -sy/`/ho`                                hMo
-				hMo/ho.     :yy-                             dM/
-			:dNM/             :yy:                         yMy
-			sy`:MN.              `+ys-                     +Mm`
-			oy`   :NM+                  .+ys/`           `hMd.ys
-			/sssssyNMm:                   `:sys:`     `oNN+   m-
-						.sNMh+.                   `:sNMdyysssssy:
-						-odMNhs+:-.`    `.-/oydMNh+.
-							`-+shdNMMMMMMMNmdyo/.
-									`````*/
+                                 /*-:::--.`
+                            -+shmMMNmmddmmNMNmho/.
+                 `yyo++osddMms:                  `/yNNy-
+              yo    +mMy:                       `./dMMdyssssso-
+              oy  -dMy.                     `-+ssso:.`:mMy`   .ys
+                ho+MN:                  `:osso/.         oMm-   +h
+                +Mmd-           `/syo-                     :MNhs`
+                `NM-.hs`      :syo:                          sMh
+                oMh   :ho``/yy+.                             `MM.
+                hM+    `yNN/`                                 dM+
+                dM/  -sy/`/ho`                                hMo
+                hMo/ho.     :yy-                             dM/
+            :dNM/             :yy:                         yMy
+            sy`:MN.              `+ys-                     +Mm`
+            oy`   :NM+                  .+ys/`           `hMd.ys
+            /sssssyNMm:                   `:sys:`     `oNN+   m-
+                        .sNMh+.                   `:sNMdyysssssy:
+                        -odMNhs+:-.`    `.-/oydMNh+.
+                            `-+shdNMMMMMMMNmdyo/.
+                                    `````*/
 //#############################################################################
 // Ground extraction process_unit
 //#############################################################################
@@ -68,7 +68,7 @@ using namespace er;
 bool ground_filter::process()
 {
 #ifdef DEBUG
-	printf(" ground_filter::process() \n");
+	std::cout << " ground_filter::process() " << std::endl;
 #endif
 
 	start_process();

@@ -27,7 +27,7 @@ set(CMAKE_BUILD_TYPE Release)
 
 #set(CMAKE_BUILD_TYPE Debug)
 
-add_definitions( -DUSE_IMGUI )
+#add_definitions( -DUSE_IMGUI )
 
 find_package( PCL REQUIRED )
 
