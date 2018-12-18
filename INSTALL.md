@@ -177,7 +177,11 @@ git submodule update
 
 ## libigl Installation
 
-LibIGl is a geometric processing library that enables point cloud analysis and 
+LibIGl is a geometric processing library that enables point cloud analysis.
+
+If you compile on ARM, there is an error about msse2. 
+Not really important to fully install the library, since everything is header based you only have to get it setup with the cmake.
+
 ```
 cd libs/libigl/
 mkdir build
