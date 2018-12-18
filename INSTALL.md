@@ -175,6 +175,18 @@ Update and download the right versions of the libraries
 git submodule update
 ```
 
+## libigl Installation
+
+LibIGl is a geometric processing library that enables point cloud analysis and 
+```
+cd libs/libigl/
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+```
+
 ## Realsense Installation
 
 Before trying to install and run the code from this repository we have to install the realsense. Here is a more complete version on how to install the realsense.
